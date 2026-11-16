@@ -9,7 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Caprasimo&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
-<script src="lockers.js"></script>
 <body>
 
 <div class="toast" id="toast"></div>
@@ -2553,5 +2552,6 @@ function showPage(p){
 function setNav(p){ document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); const m={shop:'nav-shop',cart:'nav-cart',info:'nav-info',profile:'nav-profile',custom:'nav-custom'}; if(m[p]) document.getElementById(m[p]).classList.add('active'); }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 </script>
+<script src="lockers.js"></script>
 </body>
 </html>
