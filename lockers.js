@@ -164,10 +164,10 @@ function renderPicker(){
   $id('lk-hint').style.display='none';
   $id('lk-picker').style.display='block';
   $id('lk-sheet').classList.remove('open');
-  $id('lk-picker').innerHTML='
+  $id('lk-picker').innerHTML=`
     <div class="lk-ptitle">🚪 The <span>Locker Room</span></div>
     <div class="lk-psub">Pick a club — step inside their 3D locker room</div>
-    <div class="lk-grid">'+
+    <div class="lk-grid">`+
     Object.keys(CLUBS).map(function(tid){
       var c=CLUBS[tid];
       return '<div class="lk-card" style="background:linear-gradient(135deg,'+c.color+' 0%,'+shade(c.color,-0.45)+' 100%)" onclick="lkEnter(\''+tid+'\')">'+
