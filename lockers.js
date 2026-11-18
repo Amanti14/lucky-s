@@ -359,6 +359,14 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
+function loadImg(url,cb){
+  try{
+    var im=new Image();
+    im.onload=function(){ if(scene) cb(im); };
+    im.onerror=function(){};
+    im.src=url;
+  }catch(e){}
+}
 function cv(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function mkTex(c,repeat){
   var t=new T.CanvasTexture(c);
@@ -420,7 +428,7 @@ function crestCanvas(club){
   }
   return c;
 }
-function bandCanvas(club){
+function bandCanvas(club,img){
   var c=cv(2048,192),g=c.getContext('2d'),txt=club.motto||club.name.toUpperCase();
   g.fillStyle=club.P.band;g.fillRect(0,0,2048,192);
   var gr=g.createLinearGradient(0,0,0,192);gr.addColorStop(0,'rgba(255,255,255,.12)');gr.addColorStop(1,'rgba(0,0,0,.16)');
@@ -431,8 +439,11 @@ function bandCanvas(club){
   g.fillText(txt,1024,100);
   var w=g.measureText(txt).width;
   [-1,1].forEach(function(sd){
-    var x=1024+sd*(w/2+150);
-    if(club.icon==='cannon'){
+    var ih=112,iw=(img&&img.width)?img.width*(ih/img.height):0;
+    var x=1024+sd*(w/2+(iw?iw/2+64:150));
+    if(iw){
+      g.drawImage(img,x-iw/2,100-ih/2,iw,ih);
+    }else if(club.icon==='cannon'){
       g.save();g.translate(x,104);if(sd<0)g.scale(-1,1);g.scale(0.27,0.27);drawCannon(g,0,0,club.color2);g.restore();
     }else{
       g.beginPath();g.arc(x,100,16,0,Math.PI*2);g.fill();
@@ -537,17 +548,13 @@ function buildRoom(tid){
   var crestT=mkTex(crestCanvas(club));
   var crest=new T.Mesh(new T.PlaneGeometry(4.2,4.2),new T.MeshStandardMaterial({map:crestT,transparent:true,roughness:0.5,depthWrite:false}));
   crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,P.R+P.Ls*0.2);scene.add(crest);
-  if(club.crestUrl){
-    var im=new Image();
-    im.onload=function(){
-      try{
-        var c2=cv(1024,1024),g2=c2.getContext('2d'),r=Math.min(900/im.width,900/im.height);
-        g2.drawImage(im,512-im.width*r/2,512-im.height*r/2,im.width*r,im.height*r);
-        var nt=mkTex(c2);crest.material.map=nt;crest.material.needsUpdate=true;
-      }catch(e){}
-    };
-    im.src=club.crestUrl;
-  }
+  loadImg(club.crestUrl||('crests/'+tid+'.png'),function(im){
+    try{
+      var c2=cv(1024,1024),g2=c2.getContext('2d'),r=Math.min(900/im.width,900/im.height);
+      g2.drawImage(im,512-im.width*r/2,512-im.height*r/2,im.width*r,im.height*r);
+      var nt=mkTex(c2);crest.material.map=nt;crest.material.needsUpdate=true;
+    }catch(e){}
+  });
 
   var ledC=cv(4,128),lg=ledC.getContext('2d'),grd=lg.createLinearGradient(0,128,0,0);
   grd.addColorStop(0,'rgba(255,255,255,.95)');grd.addColorStop(1,'rgba(255,255,255,0)');
@@ -571,6 +578,9 @@ function buildRoom(tid){
 
   /* header band (curved overhang) with the club wording */
   var bandT=mkTex(bandCanvas(club),true);
+  loadImg(club.iconUrl||('crests/'+tid+'-icon.png'),function(im){
+    try{bandT.image=bandCanvas(club,im);bandT.needsUpdate=true;}catch(e){}
+  });
   var tile=7.2;
   addStrip(P,function(p){return [p.x+p.nx*0.42,BY0,p.z+p.nz*0.42,p.x+p.nx*0.42,BY1,p.z+p.nz*0.42];},tile,-P.sBack/tile+0.5,
     new T.MeshStandardMaterial({map:bandT,roughness:0.45,side:T.DoubleSide}));
