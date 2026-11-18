@@ -359,13 +359,19 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-function loadImg(url,cb){
-  try{
-    var im=new Image();
-    im.onload=function(){ if(scene) cb(im); };
-    im.onerror=function(){};
-    im.src=url;
-  }catch(e){}
+function loadImg(urls,cb){
+  /* tries each url in order (e.g. crests/arsenal.png, then arsenal.png); silent if none exist */
+  if(typeof urls==='string') urls=[urls];
+  var i=0;
+  (function next(){
+    if(i>=urls.length) return;
+    try{
+      var im=new Image(),u=urls[i++];
+      im.onload=function(){ if(scene) cb(im); };
+      im.onerror=next;
+      im.src=u;
+    }catch(e){}
+  })();
 }
 function cv(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function mkTex(c,repeat){
@@ -548,7 +554,7 @@ function buildRoom(tid){
   var crestT=mkTex(crestCanvas(club));
   var crest=new T.Mesh(new T.PlaneGeometry(4.2,4.2),new T.MeshStandardMaterial({map:crestT,transparent:true,roughness:0.5,depthWrite:false}));
   crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,P.R+P.Ls*0.2);scene.add(crest);
-  loadImg(club.crestUrl||('crests/'+tid+'.png'),function(im){
+  loadImg(club.crestUrl?[club.crestUrl]:['crests/'+tid+'.png',tid+'.png'],function(im){
     try{
       var c2=cv(1024,1024),g2=c2.getContext('2d'),r=Math.min(900/im.width,900/im.height);
       g2.drawImage(im,512-im.width*r/2,512-im.height*r/2,im.width*r,im.height*r);
@@ -578,7 +584,7 @@ function buildRoom(tid){
 
   /* header band (curved overhang) with the club wording */
   var bandT=mkTex(bandCanvas(club),true);
-  loadImg(club.iconUrl||('crests/'+tid+'-icon.png'),function(im){
+  loadImg(club.iconUrl?[club.iconUrl]:['crests/'+tid+'-icon.png',tid+'-icon.png'],function(im){
     try{bandT.image=bandCanvas(club,im);bandT.needsUpdate=true;}catch(e){}
   });
   var tile=7.2;
