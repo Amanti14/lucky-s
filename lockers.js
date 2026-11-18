@@ -359,18 +359,20 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-function loadImg(urls,cb){
-  /* tries each url in order (e.g. crests/arsenal.png, then arsenal.png); silent if none exist */
+var LK_DEBUG=true;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
+var LK_V='5';        /* bump this number to force phones to re-download the images */
+function loadImg(urls,cb,label){
+  /* tries each url in order (e.g. crests/arsenal.png, then arsenal.png) */
   if(typeof urls==='string') urls=[urls];
   var i=0;
   (function next(){
-    if(i>=urls.length) return;
+    if(i>=urls.length){ if(LK_DEBUG&&label&&typeof showToast==='function') showToast('⚠ '+label+' not found ('+urls[0]+')'); return; }
     try{
       var im=new Image(),u=urls[i++];
-      im.onload=function(){ if(scene) cb(im); };
+      im.onload=function(){ if(LK_DEBUG&&label&&typeof showToast==='function') showToast('✓ '+label+' loaded'); if(scene) cb(im); };
       im.onerror=next;
-      im.src=u;
-    }catch(e){}
+      im.src=u+(u.indexOf('?')<0?'?v='+LK_V:'');
+    }catch(e){ next(); }
   })();
 }
 function cv(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;return c;}
@@ -560,7 +562,7 @@ function buildRoom(tid){
       g2.drawImage(im,512-im.width*r/2,512-im.height*r/2,im.width*r,im.height*r);
       var nt=mkTex(c2);crest.material.map=nt;crest.material.needsUpdate=true;
     }catch(e){}
-  });
+  },tid==='arsenal'?'Arsenal floor crest':null);
 
   var ledC=cv(4,128),lg=ledC.getContext('2d'),grd=lg.createLinearGradient(0,128,0,0);
   grd.addColorStop(0,'rgba(255,255,255,.95)');grd.addColorStop(1,'rgba(255,255,255,0)');
@@ -586,7 +588,7 @@ function buildRoom(tid){
   var bandT=mkTex(bandCanvas(club),true);
   loadImg(club.iconUrl?[club.iconUrl]:['crests/'+tid+'-icon.png',tid+'-icon.png'],function(im){
     try{bandT.image=bandCanvas(club,im);bandT.needsUpdate=true;}catch(e){}
-  });
+  },tid==='arsenal'?'Arsenal band icon':null);
   var tile=7.2;
   addStrip(P,function(p){return [p.x+p.nx*0.42,BY0,p.z+p.nz*0.42,p.x+p.nx*0.42,BY1,p.z+p.nz*0.42];},tile,-P.sBack/tile+0.5,
     new T.MeshStandardMaterial({map:bandT,roughness:0.45,side:T.DoubleSide}));
