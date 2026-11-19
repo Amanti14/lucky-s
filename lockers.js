@@ -359,7 +359,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_DEBUG=true;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
+var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='5';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
   /* tries each url in order (e.g. crests/arsenal.png, then arsenal.png) */
@@ -442,19 +442,19 @@ function bandCanvas(club,img){
   var gr=g.createLinearGradient(0,0,0,192);gr.addColorStop(0,'rgba(255,255,255,.12)');gr.addColorStop(1,'rgba(0,0,0,.16)');
   g.fillStyle=gr;g.fillRect(0,0,2048,192);
   g.fillStyle=club.color2;g.textAlign='center';g.textBaseline='middle';
-  var fs=108;g.font='900 '+fs+'px "Arial Black",Arial,sans-serif';
-  while(g.measureText(txt).width>1250&&fs>40){fs-=4;g.font='900 '+fs+'px "Arial Black",Arial,sans-serif';}
+  var fs=92;g.font='900 '+fs+'px "Arial Black",Arial,sans-serif';
+  while(g.measureText(txt).width>950&&fs>36){fs-=2;g.font='900 '+fs+'px "Arial Black",Arial,sans-serif';}
   g.fillText(txt,1024,100);
   var w=g.measureText(txt).width;
   [-1,1].forEach(function(sd){
-    var ih=112,iw=(img&&img.width)?img.width*(ih/img.height):0;
-    var x=1024+sd*(w/2+(iw?iw/2+64:150));
+    var ih=84,iw=(img&&img.width)?img.width*(ih/img.height):0;
+    var x=1024+sd*(w/2+(iw?iw/2+42:110));
     if(iw){
       g.drawImage(img,x-iw/2,100-ih/2,iw,ih);
     }else if(club.icon==='cannon'){
-      g.save();g.translate(x,104);if(sd<0)g.scale(-1,1);g.scale(0.27,0.27);drawCannon(g,0,0,club.color2);g.restore();
+      g.save();g.translate(x,104);if(sd<0)g.scale(-1,1);g.scale(0.2,0.2);drawCannon(g,0,0,club.color2);g.restore();
     }else{
-      g.beginPath();g.arc(x,100,16,0,Math.PI*2);g.fill();
+      g.beginPath();g.arc(x,100,13,0,Math.PI*2);g.fill();
     }
   });
   return c;
@@ -480,7 +480,7 @@ function buildPath(N){
   for(i=0;i<=n;i++){push(A,R+i*step,0,1);s+=step;}
   var total=s-step;
   var sBack=Ls+Math.PI*R/2+Lb/2;
-  return {pts:pts,total:total,step:step,R:R,A:A,Ls:Ls,Lb:Lb,sBack:sBack,zEnd:R+Ls,zC:(R+Ls)*0.62};
+  return {pts:pts,total:total,step:step,R:R,A:A,Ls:Ls,Lb:Lb,sBack:sBack,zEnd:R+Ls,zC:(R+Ls)-1.15};
 }
 function atS(P,s){
   s=clamp(s,0,P.total);
@@ -554,8 +554,8 @@ function buildRoom(tid){
   floor.rotation.x=-Math.PI/2;floor.position.set(0,0,P.zC);scene.add(floor);
 
   var crestT=mkTex(crestCanvas(club));
-  var crest=new T.Mesh(new T.PlaneGeometry(4.2,4.2),new T.MeshStandardMaterial({map:crestT,transparent:true,roughness:0.5,depthWrite:false}));
-  crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,P.R+P.Ls*0.2);scene.add(crest);
+  var crest=new T.Mesh(new T.PlaneGeometry(4.6,4.6),new T.MeshStandardMaterial({map:crestT,transparent:true,roughness:0.5,depthWrite:false}));
+  crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,P.zEnd*0.45+0.4);scene.add(crest);
   loadImg(club.crestUrl?[club.crestUrl]:['crests/'+tid+'.png',tid+'.png'],function(im){
     try{
       var c2=cv(1024,1024),g2=c2.getContext('2d'),r=Math.min(900/im.width,900/im.height);
@@ -585,7 +585,7 @@ function buildRoom(tid){
     new T.MeshStandardMaterial({map:mkTex(wc,true),roughness:0.92,side:T.DoubleSide}));
 
   /* header band (curved overhang) with the club wording */
-  var bandT=mkTex(bandCanvas(club),true);
+  var bandT=mkTex(bandCanvas(club),false);
   loadImg(club.iconUrl?[club.iconUrl]:['crests/'+tid+'-icon.png',tid+'-icon.png'],function(im){
     try{bandT.image=bandCanvas(club,im);bandT.needsUpdate=true;}catch(e){}
   },tid==='arsenal'?'Arsenal band icon':null);
@@ -627,10 +627,6 @@ function buildRoom(tid){
   }}
   var front=new T.Mesh(new T.PlaneGeometry(P.A*2+0.4,H),std(P0.wall,0.95,0));
   front.rotation.y=Math.PI;front.position.set(0,H/2,P.zEnd+0.02);scene.add(front);
-  [-1,1].forEach(function(sd){
-    var pil=new T.Mesh(new T.BoxGeometry(0.55,H,0.5),divMat);
-    pil.position.set(sd*(P.A-0.55),H/2,P.zEnd-0.25);scene.add(pil);
-  });
   var bc=cv(1024,512),bg=bc.getContext('2d'),bgr=bg.createLinearGradient(0,0,1024,512);
   bgr.addColorStop(0,shade(P0.band,0.05));bgr.addColorStop(1,shade(P0.band,-0.45));
   bg.fillStyle=bgr;bg.fillRect(0,0,1024,512);
@@ -650,8 +646,8 @@ function buildRoom(tid){
   rg.addColorStop(0,'rgba(40,25,25,.30)');rg.addColorStop(1,'rgba(40,25,25,0)');sg.fillStyle=rg;sg.fillRect(0,0,128,128);
   var shMat=new T.MeshBasicMaterial({map:mkTex(shC),transparent:true,depthWrite:false}),shGeo=new T.PlaneGeometry(0.95,1.15);
   S={team:tid,club:club,P:P,shirts:[],pick:[],inspect:null,hover:null,ptr:{x:0,y:0,has:false},
-     cam:{x:0,z:P.zEnd-0.9,yaw:0,pitch:0,yawT:0,pitchT:0,fov:70,fovT:70},
-     intro:{active:false,t:0,dur:3.4,startZ:P.zEnd-0.9,endZ:P.zC},
+     cam:{x:0,z:P.zEnd-0.3,yaw:0,pitch:-0.12,yawT:0,pitchT:-0.12,fov:74,fovT:74},
+     intro:{active:false,t:0,dur:2.8,startZ:P.zEnd-0.3,endZ:P.zC},
      spin:0,spinT:0,tilt:0,tiltT:0,last:performance.now(),time:0,frame:0,
      ray:new T.Raycaster(),vtmp:new T.Vector3(),w:w,h:h};
   S.cam.z=S.intro.startZ;
@@ -792,7 +788,7 @@ function showHint(txt,ms){
 function lkResetView(){
   if(!S) return;
   closeInspect();
-  S.cam.yawT=0;S.cam.pitchT=0;S.cam.fovT=70;
+  S.cam.yawT=0;S.cam.pitchT=-0.12;S.cam.fovT=74;
 }
 function lkTour(){
   var club=S&&S.club||CLUBS[curTeam];
