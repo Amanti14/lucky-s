@@ -2552,6 +2552,6 @@ function showPage(p){
 function setNav(p){ document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); const m={shop:'nav-shop',cart:'nav-cart',info:'nav-info',profile:'nav-profile',custom:'nav-custom'}; if(m[p]) document.getElementById(m[p]).classList.add('active'); }
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
 </script>
-<script src="lockers.js"></script>
+<script>var s=document.createElement('script');s.src='lockers.js?t='+Date.now();document.body.appendChild(s);</script>
 </body>
 </html>
