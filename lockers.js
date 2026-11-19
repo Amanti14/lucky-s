@@ -61,6 +61,22 @@ var css=`
 .lk-btn-primary{background:var(--accent,#fff);color:#101218}
 .lk-btn-ghost{background:rgba(255,255,255,.09);color:#fff;border:1px solid rgba(255,255,255,.22)}
 .lk-note{margin-top:16px;font-size:11px;color:rgba(255,255,255,.55);line-height:1.6;text-align:center}
+.lk-arrow{position:absolute;top:40%;z-index:45;width:48px;height:48px;margin-top:-24px;border-radius:50%;border:1px solid rgba(255,255,255,.34);background:rgba(20,16,14,.62);color:#fff;font-size:32px;line-height:40px;text-align:center;cursor:pointer;display:none;padding:0 0 4px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:opacity .2s}
+.lk-arrow.on{display:block}
+.lk-arrow-l{left:10px}.lk-arrow-r{right:10px}
+.lk-arrow.dis{opacity:.22;pointer-events:none;border-style:dashed}
+.lk-count{font-size:12px;font-weight:700;color:rgba(255,255,255,.75);background:rgba(255,255,255,.12);border-radius:20px;padding:4px 10px;white-space:nowrap}
+.lk-own-toggle{width:100%;margin-top:9px;flex:none}
+.lk-own{display:none;margin-top:10px}
+.lk-own.open{display:block}
+.lk-own-row{display:flex;gap:8px;margin-bottom:9px}
+.lk-in{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.24);color:#fff;border-radius:10px;padding:11px 10px;font-size:14px;font-weight:700;min-width:0;outline:none;text-transform:uppercase;font-family:inherit}
+.lk-in::placeholder{color:rgba(255,255,255,.35)}
+.lk-in:focus{border-color:#fff}
+#lk-own-name{flex:1}
+.lk-in-num{width:58px;text-align:center}
+.lk-in-size{width:66px;text-transform:none}
+.lk-in-size option{color:#000}
 .lk-intro{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:#0a0807;transition:opacity .7s ease}
 .lk-intro.out{opacity:0;pointer-events:none}
 .lk-intro-kicker{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:18px}
@@ -334,7 +350,7 @@ function loadRoom(tid){
     intro.target=46;
     setTimeout(function(){
       try{ buildRoom(tid); }
-      catch(err){ if(window.console) console.error(err); $id('lk-intro').style.display='none'; lkExitRoom(); showToast('3D view failed to start on this device'); return; }
+      catch(err){ if(window.console) console.error(err); var em=(err&&err.message)?err.message:String(err); $id('lk-intro').style.display='none'; lkExitRoom(); showToast('3D error (build '+LK_BUILD+'): '+em.slice(0,120)); return; }
       intro.target=100; intro.ready=true;
     },80);
   }).catch(function(){
@@ -359,6 +375,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
+var LK_BUILD=8;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='5';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -733,18 +750,21 @@ function buildShirt(player,club,cache){
   var nu=new T.Mesh(new T.PlaneGeometry(0.27,0.27),pm(numTex(player.num,kit.num)));nu.position.set(0,-0.36,0.0235);g.add(nu);
   /* chest badge (front) */
   var bd=new T.Mesh(new T.PlaneGeometry(0.075,0.075),pm(badgeTex(club,kit.num)));bd.position.set(0.085,-0.15,-0.0235);bd.rotation.y=Math.PI;g.add(bd);
-  g.userData.player=player;
+  g.userData.player=player;g.userData.nameMesh=nm;g.userData.numMesh=nu;g.userData.printColor=kit.num;
   return g;
 }
 
 /* ---------- take a shirt down / hang it back ---------- */
-function takeDown(sh){
-  if(!S||S.inspect) return;
-  S.inspect={shirt:sh};S.spin=0;S.spinT=0;S.tilt=0;S.tiltT=0;S.hover=null;
+function aimAt(sh){
   var hp=sh.userData.homePos,c=S.cam;
   var tx=hp.x-c.x,ty=hp.y-0.36-EYE,tz=hp.z-c.z;
   c.yawT=c.yaw+angDiff(Math.atan2(-tx,-tz)-c.yaw);
   c.pitchT=clamp(Math.atan2(ty,Math.hypot(tx,tz)),-0.5,0.5);
+}
+function takeDown(sh){
+  if(!S||S.inspect) return;
+  S.inspect={shirt:sh};S.spin=0;S.spinT=0;S.tilt=0;S.tiltT=0;S.hover=null;
+  aimAt(sh);
   showSheet(sh.userData.player,S.club);
   $id('lk-dim').classList.add('on');
   $id('lk-hint').style.opacity='0';
@@ -752,6 +772,7 @@ function takeDown(sh){
 }
 function closeInspect(silent){
   if(!S||!S.inspect){ hideSheet(); var d0=$id('lk-dim'); if(d0)d0.classList.remove('on'); return; }
+  resetOwn(S.inspect.shirt);
   S.inspect=null;
   hideSheet();
   $id('lk-dim').classList.remove('on');
@@ -767,8 +788,95 @@ function showSheet(player,club){
   $id('lk-sheet-name').textContent=player.n;
   $id('lk-sheet-pos').textContent=posLabel(player.pos)+' · '+club.name+' '+kitLbl;
   $id('lk-sheet').classList.add('open');
+  if(S&&S.inspect){
+    var idx=S.shirts.indexOf(S.inspect.shirt),n=S.shirts.length;
+    $id('lk-sheet-count').textContent=(idx+1)+' / '+n;
+    $id('lk-prev').classList.add('on');$id('lk-next').classList.add('on');
+    $id('lk-prev').classList.toggle('dis',idx<=0);
+    $id('lk-next').classList.toggle('dis',idx>=n-1);
+  }
 }
-function hideSheet(){ SEL=null; var s=$id('lk-sheet'); if(s) s.classList.remove('open'); }
+function hideSheet(){
+  SEL=null;
+  var s=$id('lk-sheet'); if(s) s.classList.remove('open');
+  var a=$id('lk-prev'),b=$id('lk-next'); if(a)a.classList.remove('on'); if(b)b.classList.remove('on');
+}
+
+/* ---------- previous / next kit ---------- */
+function lkStep(d){
+  if(!S||!S.inspect) return;
+  var idx=S.shirts.indexOf(S.inspect.shirt),ni=idx+d;
+  if(ni<0||ni>=S.shirts.length) return;
+  resetOwn(S.inspect.shirt);
+  var sh=S.shirts[ni];
+  S.inspect={shirt:sh};S.spin=0;S.spinT=0;S.tilt=0;S.tiltT=0;
+  aimAt(sh);
+  showSheet(sh.userData.player,S.club);
+  sfx('take');
+}
+
+/* ---------- your own name & number ---------- */
+function homeProduct(){
+  var all=(typeof getAllProductsFlat==='function')?getAllProductsFlat():[];
+  var mine=all.filter(function(p){return p.teamId===S.team;});
+  return mine.find(function(p){return /home/i.test(p.kitType||'');})||mine[0]||null;
+}
+function swapMap(mesh,t){
+  var old=mesh.material.map;mesh.material.map=t;mesh.material.needsUpdate=true;
+  if(old&&old.dispose) old.dispose();
+}
+function setShirtPrint(sh,name,num){
+  var u=sh.userData;
+  swapMap(u.nameMesh,nameTex(name,u.printColor));
+  swapMap(u.numMesh,numTex(num,u.printColor));
+}
+function resetShirtPrint(sh){
+  if(!sh||!sh.userData.nameMesh) return;
+  var u=sh.userData;
+  setShirtPrint(sh,surname(u.player.n),u.player.num);
+}
+function resetOwn(sh){
+  var box=$id('lk-own'); if(box) box.classList.remove('open');
+  var a=$id('lk-own-name'),b=$id('lk-own-num'); if(a)a.value=''; if(b)b.value='';
+  var t=$id('lk-own-toggle'); if(t) t.innerHTML='✏️ Your own name &amp; number';
+  if(S) S.own=0;
+  if(sh) resetShirtPrint(sh);
+}
+function lkToggleOwn(){
+  if(!S||!S.inspect) return;
+  var box=$id('lk-own'),open=!box.classList.contains('open');
+  if(!open){ resetOwn(S.inspect.shirt); return; }
+  box.classList.add('open');S.own=1;
+  var sel=$id('lk-own-size');
+  var sizes=(cfg&&cfg.sizes)||['S','M','L','XL'];
+  sel.innerHTML=sizes.map(function(z,i){return '<option value="'+z+'"'+(i===2?' selected':'')+'>'+z+'</option>';}).join('');
+  var prod=homeProduct(),fee=(cfg&&cfg.customFee)||0;
+  var pr=$id('lk-own-price');
+  if(pr) pr.textContent=(prod&&typeof fmt==='function')?'· '+fmt(prod.price+fee):'';
+  $id('lk-own-toggle').innerHTML='✕ Close';
+  setShirtPrint(S.inspect.shirt,'','');
+  setTimeout(function(){var n=$id('lk-own-name'); if(n)n.focus();},60);
+}
+function lkOwnInput(){
+  if(!S||!S.inspect) return;
+  var a=$id('lk-own-name'),b=$id('lk-own-num');
+  a.value=a.value.toUpperCase().slice(0,12);
+  b.value=b.value.replace(/\D/g,'').slice(0,2);
+  setShirtPrint(S.inspect.shirt,a.value.trim(),b.value);
+}
+function lkAddOwn(){
+  if(!S||!S.inspect) return;
+  var name=($id('lk-own-name').value||'').toUpperCase().slice(0,12).trim();
+  var num=($id('lk-own-num').value||'').replace(/\D/g,'').slice(0,2);
+  if(!name&&!num){ showToast('Type your name and/or number first'); return; }
+  var prod=homeProduct();
+  if(!prod){ showToast('Kit not found in shop catalog'); return; }
+  var fee=(cfg&&cfg.customFee)||0,size=$id('lk-own-size').value||'M';
+  cart.push(Object.assign({},prod,{price:prod.price+fee,size:size,qty:1,custom:{name:name,number:num}}));
+  saveCart(); updateBadge();
+  showToast('Your custom kit added! 🎨');
+  resetOwn(S.inspect.shirt);
+}
 function posLabel(p){return {g:'Goalkeeper',d:'Defender',m:'Midfielder',f:'Forward'}[p]||'Player'}
 
 /* ---------- enter the room (after the intro) ---------- */
@@ -832,9 +940,10 @@ function lkPersonalize(){
       var pn=$id('custom-preview-name'),pt=$id('custom-preview-number');
       if(pn) pn.textContent=customState.name;
       if(pt) pt.textContent=customState.number;
-      var nIn=$id('custom-name-input'),tIn=$id('custom-number-input');
+      var nIn=$id('custom-name-inp'),tIn=$id('custom-number-inp');
       if(nIn) nIn.value=customState.name;
       if(tIn) tIn.value=customState.number;
+      if(typeof updateCustomPreview==='function') updateCustomPreview();
     }catch(e){}
   },80);
 }
@@ -903,6 +1012,14 @@ function bindRoomInput(canvas){
     if(S&&!S.inspect) S.cam.fovT=clamp(S.cam.fovT+e.deltaY*0.03,42,88);
   },{passive:false});
   window.addEventListener('resize',onResize);
+  window.addEventListener('keydown',function(e){
+    if(!S||!S.inspect) return;
+    var tg=e.target&&e.target.tagName;
+    if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA') return;
+    if(e.key==='ArrowRight') lkStep(1);
+    else if(e.key==='ArrowLeft') lkStep(-1);
+    else if(e.key==='Escape') closeInspect();
+  });
 }
 function onResize(){
   if(!renderer||!camera) return;
@@ -915,8 +1032,14 @@ function onResize(){
 }
 
 /* ---------- render loop ---------- */
+var animErr=false;
 function animate(){
   rafId=requestAnimationFrame(animate);
+  if(!renderer||!S) return;
+  try{ frame(); }
+  catch(e){ if(!animErr){ animErr=true; if(window.console) console.error(e); if(typeof showToast==='function') showToast('3D frame error (build '+LK_BUILD+'): '+String(e&&e.message||e).slice(0,120)); } }
+}
+function frame(){
   if(!renderer||!S) return;
   var pg=$id('page-lockers');
   if(!pg||!pg.classList.contains('active')) return;
@@ -950,7 +1073,8 @@ function animate(){
 
   /* shirt target in front of the camera while inspecting */
   var fx=-Math.sin(c.yaw)*Math.cos(c.pitch),fy=Math.sin(c.pitch),fz=-Math.cos(c.yaw)*Math.cos(c.pitch);
-  var tgx=c.x+fx*1.25,tgy=EYE+fy*1.25+0.12+0.47,tgz=c.z+fz*1.25;
+  S.ownK=(S.ownK||0)+(((S.own||0)-(S.ownK||0))*k);
+  var tgx=c.x+fx*1.25,tgy=EYE+fy*1.25+0.12+0.47+0.17*S.ownK,tgz=c.z+fz*1.25;
   var faceY=Math.atan2(-fx,-fz);
   S.spin+=(S.spinT-S.spin)*k;S.tilt+=(S.tiltT-S.tilt)*k;
 
@@ -964,7 +1088,7 @@ function animate(){
       sh.rotation.y=ud.homeRot+angDiff(faceY-ud.homeRot)*ke+S.spin*ke;
       sh.rotation.x=S.tilt*ke;
       sh.rotation.z=0;
-      var sc=1+0.3*ke;sh.scale.set(sc,sc,sc);
+      var sc=1+(0.3-0.12*S.ownK)*ke;sh.scale.set(sc,sc,sc);
     }else{
       var sw=Math.sin(S.time*0.9+ud.seed)*0.012;
       sh.position.set(hp.x,hp.y+0.035*ud.h,hp.z);
@@ -985,6 +1109,10 @@ window.lkCloseLocker=function(){closeInspect();};
 window.lkEnterRoom=lkEnterRoom;
 window.lkToggleSound=lkToggleSound;
 window.lkResetView=lkResetView;
+window.lkStep=lkStep;
+window.lkToggleOwn=lkToggleOwn;
+window.lkOwnInput=lkOwnInput;
+window.lkAddOwn=lkAddOwn;
 window.lkTour=lkTour;
 window.lkCloseTour=lkCloseTour;
 
@@ -1013,7 +1141,7 @@ function injectMarkup(){
         '<div class="lk-intro-actions" id="lk-intro-actions">'+
           '<button class="lk-enter" onclick="lkEnterRoom(true)">🔊 Enter with sound</button>'+
           '<button class="lk-enter ghost" onclick="lkEnterRoom(false)">🔇 Enter muted</button>'+
-          '<div class="lk-intro-note">Best with sound</div>'+
+          '<div class="lk-intro-note">Best with sound · build '+LK_BUILD+'</div>'+
         '</div>'+
       '</div>'+
       '<div class="lk-picker" id="lk-picker"></div>'+
@@ -1021,12 +1149,24 @@ function injectMarkup(){
         '<div class="lk-sheet-top">'+
           '<div class="lk-num" id="lk-sheet-num">7</div>'+
           '<div style="flex:1"><div class="lk-pname" id="lk-sheet-name">—</div><div class="lk-ppos" id="lk-sheet-pos">—</div></div>'+
+          '<div class="lk-count" id="lk-sheet-count">1 / 1</div>'+
         '</div>'+
         '<div class="lk-btns">'+
           '<button class="lk-btn lk-btn-primary" onclick="lkAddKit()">Add Kit 🛒</button>'+
           '<button class="lk-btn lk-btn-ghost" onclick="lkPersonalize()">Personalize 🎨</button>'+
         '</div>'+
+        '<button class="lk-btn lk-btn-ghost lk-own-toggle" id="lk-own-toggle" onclick="lkToggleOwn()">✏️ Your own name &amp; number</button>'+
+        '<div class="lk-own" id="lk-own">'+
+          '<div class="lk-own-row">'+
+            '<input id="lk-own-name" class="lk-in" maxlength="12" placeholder="YOUR NAME" autocomplete="off" oninput="lkOwnInput()">'+
+            '<input id="lk-own-num" class="lk-in lk-in-num" maxlength="2" inputmode="numeric" placeholder="10" autocomplete="off" oninput="lkOwnInput()">'+
+            '<select id="lk-own-size" class="lk-in lk-in-size"></select>'+
+          '</div>'+
+          '<button class="lk-btn lk-btn-primary" style="width:100%" onclick="lkAddOwn()">Add my kit to cart 🛒 <span id="lk-own-price"></span></button>'+
+        '</div>'+
       '</div>'+
+      '<button class="lk-arrow lk-arrow-l" id="lk-prev" onclick="lkStep(-1)" aria-label="Previous kit">‹</button>'+
+      '<button class="lk-arrow lk-arrow-r" id="lk-next" onclick="lkStep(1)" aria-label="Next kit">›</button>'+
       '<div class="lk-tour" id="lk-tour"></div>'+
     '</div>';
   document.body.appendChild(pg);
