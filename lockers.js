@@ -202,6 +202,11 @@ Object.assign(CLUBS.arsenal,{
   /* colours sampled from the real room video */
   pal:{band:'#e2300a',div:'#d3200f',cushion:'#a3122a',floor:'#d9dde2',wall:'#f5f3f0',led:'#ff3b1f'}
 });
+Object.assign(CLUBS.mancity,{
+  style:'etihad',abbr:'MCFC',
+  kitHome:{body:'#8CC2E8',sleeves:'#8CC2E8',num:'#1C2C5B'},     /* sky blue with navy print, as in the video */
+  gkKit:{body:'#7A2B3E',num:'#FFFFFF'}                           /* maroon keeper shirts */
+});
 Object.assign(CLUBS.manutd,{
   style:'oldtrafford',abbr:'MUFC',
   kitHome:{body:'#E2421A',sleeves:'#E2421A',num:'#FFFFFF'},   /* shirts as seen in the video: orange-red with white print */
@@ -380,7 +385,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=13;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=14;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -678,8 +683,8 @@ function arcText(g,txt,cx,cy,r,mid,fs,flip){
   }
   g.restore();
 }
-function crestCanvasOT(club){
-  var c=cv(1024,1024),g=c.getContext('2d'),col='rgba(238,232,226,.66)';
+function crestCanvasOT(club,colr){
+  var c=cv(1024,1024),g=c.getContext('2d'),col=colr||'rgba(238,232,226,.66)';
   var words=club.name.toUpperCase().split(' '),top=words[0],bot=words.slice(1).join(' ')||'F.C.';
   g.strokeStyle=col;g.fillStyle=col;g.lineJoin='round';
   g.lineWidth=26;g.beginPath();g.arc(512,512,468,0,Math.PI*2);g.stroke();
@@ -808,6 +813,128 @@ function envOT(tid,club,P,N){
   });}
 }
 
+
+/* ---------- Etihad-style round room: sky-blue band, navy benches, curved floor stripes ---------- */
+function buildPathCity(N){
+  var arc=Math.PI*5/3,R=(N*BAY)/(arc*0.97),cz=R,step=0.08;
+  function ring(a0,a1){
+    var pts=[],n=Math.ceil((a1-a0)*R/step),i,phi;
+    for(i=0;i<=n;i++){
+      phi=a0+(a1-a0)*i/n;
+      pts.push({s:R*(phi-a0),x:R*Math.sin(phi),z:cz-R*Math.cos(phi),dx:Math.cos(phi),dz:Math.sin(phi),nx:-Math.sin(phi),nz:Math.cos(phi)});
+    }
+    return pts;
+  }
+  var pts=ring(-arc/2,arc/2),total=R*arc,s0=(total-N*BAY)/2,bays=[],k;
+  for(k=0;k<N;k++) bays.push(s0+(k+0.5)*BAY);
+  return {pts:pts,total:total,step:step,bays:bays,divs:[],s0:s0,R:R,cz:cz,full:{pts:ring(-Math.PI,Math.PI)},
+          zEnd:2*R-0.15,zC:cz+R*0.55,shirtY:1.78,shirtZ:0.07,noRail:true,labels:true};
+}
+function bandCanvasCity(club,img){
+  var c=cv(4096,216),g=c.getContext('2d');
+  var gr=g.createLinearGradient(0,0,0,216);gr.addColorStop(0,'#6db3e6');gr.addColorStop(1,'#4a97d3');
+  g.fillStyle=gr;g.fillRect(0,0,4096,216);
+  g.fillStyle='#ffffff';g.textBaseline='middle';
+  function put(txt,x,align,max){
+    var fs=96;g.font='800 '+fs+'px "Arial Narrow",Arial,sans-serif';
+    while(g.measureText(txt).width>max&&fs>30){fs-=3;g.font='800 '+fs+'px "Arial Narrow",Arial,sans-serif';}
+    g.textAlign=align;g.fillText(txt,x,112);
+  }
+  put('SOME ARE BORN HERE, SOME DRAWN HERE',2048-150,'right',1820);
+  put('BUT WE ALL CALL IT HOME.',2048+150,'left',1820);
+  g.fillStyle='#ffffff';g.beginPath();g.arc(2048,108,98,0,Math.PI*2);g.fill();
+  if(img&&img.width){
+    var r=Math.min(150/img.width,150/img.height);
+    g.drawImage(img,2048-img.width*r/2,108-img.height*r/2,img.width*r,img.height*r);
+  }else{
+    g.strokeStyle='#1c2c5b';g.lineWidth=9;g.beginPath();g.arc(2048,108,84,0,Math.PI*2);g.stroke();
+    g.fillStyle='#1c2c5b';g.textAlign='center';g.font='900 42px Arial,sans-serif';g.fillText(club.abbr||'MCFC',2048,110);
+  }
+  return c;
+}
+function envCity(tid,club,P,N){
+  var R=P.R,cz=P.cz,HT=3.35,DS=T.DoubleSide,i,NAVY='#1d2f57';
+  var pf=function(m){m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-2;return m;};
+
+  scene.add(new T.HemisphereLight(0xffffff,0xd8d2c4,0.86));
+  var dl=new T.DirectionalLight(0xffffff,0.45);dl.position.set(0.5,6,cz+2);scene.add(dl);
+
+  /* floor: pale greige with dark concentric bands (like the video) */
+  var FD=(R+1)*2,PX=2048/FD,fc=cv(2048,2048),fg=fc.getContext('2d');
+  var fgr=fg.createRadialGradient(1024,1024,0,1024,1024,1024);fgr.addColorStop(0,'#d6d2c5');fgr.addColorStop(1,'#c9c5b6');
+  fg.fillStyle=fgr;fg.fillRect(0,0,2048,2048);
+  function band(d0,d1,col){
+    var r0=(R-d1)*PX,r1=(R-d0)*PX;
+    fg.strokeStyle=col;fg.lineWidth=r1-r0;fg.beginPath();fg.arc(1024,1024,(r0+r1)/2,0,Math.PI*2);fg.stroke();
+  }
+  band(1.15,1.55,'#58554c');band(1.68,1.80,'#6a665c');band(1.92,1.99,'#7a766b');
+  var floor=new T.Mesh(new T.CircleGeometry(R+1,96),new T.MeshStandardMaterial({map:mkTex(fc),roughness:0.4,metalness:0.06}));
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,0,cz);scene.add(floor);
+
+  /* big crest in the middle of the floor */
+  var crest=new T.Mesh(new T.PlaneGeometry(3.4,3.4),pf(new T.MeshStandardMaterial({map:mkTex(crestCanvasOT(club,'rgba(104,98,86,.92)')),transparent:true,roughness:0.5,depthWrite:false})));
+  crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,cz);scene.add(crest);
+  loadImg(club.crestUrl?[club.crestUrl]:['crests/'+tid+'-floor.png',tid+'-floor.png','crests/'+tid+'.png',tid+'.png'],function(im){
+    try{
+      var c2=cv(1024,1024),g2=c2.getContext('2d'),r=Math.min(900/im.width,900/im.height);
+      g2.drawImage(im,512-im.width*r/2,512-im.height*r/2,im.width*r,im.height*r);
+      crest.material.map=mkTex(c2);crest.material.needsUpdate=true;
+    }catch(e){}
+  });
+
+  /* white wall all the way round (faint panel seams per bay) */
+  var wc=cv(128,512),wg=wc.getContext('2d');
+  wg.fillStyle='#f6f4f0';wg.fillRect(0,0,128,512);
+  var yb=(1-2.52/HT)*512,g1=wg.createLinearGradient(0,yb,0,yb+110);
+  g1.addColorStop(0,'rgba(90,80,70,.20)');g1.addColorStop(1,'rgba(90,80,70,0)');wg.fillStyle=g1;wg.fillRect(0,yb,128,110);
+  wg.fillStyle='rgba(60,60,60,.16)';wg.fillRect(0,0,2,512);
+  addStrip(P.full,function(p){return [p.x,0,p.z,p.x,HT,p.z];},BAY,-(R*Math.PI/6+P.s0)/BAY,
+    new T.MeshStandardMaterial({map:mkTex(wc,true),roughness:0.9,side:DS}));
+
+  /* sky-blue band with the club wording, leaning out from the wall */
+  var tile=Math.PI*R;
+  var bandT=mkTex(bandCanvasCity(club),true);
+  addStrip(P.full,function(p){return [p.x+p.nx*0.3,2.52,p.z+p.nz*0.3,p.x,3.2,p.z];},tile,0.5,
+    new T.MeshStandardMaterial({map:bandT,roughness:0.5,side:DS}));
+  loadImg(['crests/'+tid+'.png',tid+'.png'],function(im){
+    try{bandT.image=bandCanvasCity(club,im);bandT.needsUpdate=true;}catch(e){}
+  });
+
+  /* open storage under the bench: white frame, dark inside */
+  var cc=cv(256,96),cg=cc.getContext('2d');
+  cg.fillStyle='#f3f2ef';cg.fillRect(0,0,256,96);
+  var ig=cg.createLinearGradient(0,8,0,88);ig.addColorStop(0,'#0c0c0e');ig.addColorStop(1,'#1d1d20');
+  cg.fillStyle=ig;cg.fillRect(8,8,240,80);
+  addStrip(P,function(p){return [p.x+p.nx*0.62,0.03,p.z+p.nz*0.62,p.x+p.nx*0.62,0.40,p.z+p.nz*0.62];},BAY,-P.s0/BAY,
+    new T.MeshStandardMaterial({map:mkTex(cc,true),roughness:0.7,side:DS}));
+  addStrip(P,function(p){return [p.x+p.nx*0.06,0.03,p.z+p.nz*0.06,p.x+p.nx*0.62,0.03,p.z+p.nz*0.62];},4,0,std('#e9e7e3',0.8,0,{side:DS}));
+
+  /* navy leather seat with a rolled edge, two navy back pads per bay */
+  var leather=std(NAVY,0.4,0.08),seatGeo=new T.BoxGeometry(0.84,0.1,0.56),rollGeo=new T.CylinderGeometry(0.06,0.06,0.84,12),padGeo=new T.BoxGeometry(0.38,0.5,0.06),m,pp,k;
+  for(i=0;i<N;i++){
+    var sPos=P.bays[i];
+    m=new T.Mesh(seatGeo,leather);place(P,m,sPos,0,0.45,0.36);scene.add(m);
+    m=new T.Mesh(rollGeo,leather);m.rotation.order='YXZ';
+    pp=place(P,m,sPos,0,0.47,0.64);m.rotation.set(0,Math.atan2(pp.nx,pp.nz),Math.PI/2);scene.add(m);
+    for(k=-1;k<=1;k+=2){m=new T.Mesh(padGeo,leather);place(P,m,sPos,k*0.2,0.77,0.09);scene.add(m);}
+  }
+
+  /* ceiling: white, with grey recessed discs and bright downlights */
+  var ceil=new T.Mesh(new T.CircleGeometry(R+0.3,96),std('#f4f2ee',1,0));
+  ceil.rotation.x=Math.PI/2;ceil.position.set(0,HT,cz);scene.add(ceil);
+  var discMat=new T.MeshStandardMaterial({color:'#cdc9bd',roughness:0.95}),dm,a,rd;
+  for(k=0;k<9;k++){
+    a=k*2.4;rd=1.1+(k%3)*0.95;
+    dm=new T.Mesh(new T.CircleGeometry(0.34+(k%4)*0.14,28),discMat);
+    dm.rotation.x=Math.PI/2;dm.position.set(Math.sin(a)*rd,HT-0.025,cz+Math.cos(a)*rd);scene.add(dm);
+  }
+  var dlGeo=new T.CircleGeometry(0.11,16),dlMat=new T.MeshBasicMaterial({color:0xffffff});
+  for(k=0;k<14;k++){
+    a=k*0.9;rd=1.5+(k%5)*0.42;
+    dm=new T.Mesh(dlGeo,dlMat);dm.rotation.x=Math.PI/2;dm.position.set(Math.sin(a)*rd,HT-0.035,cz+Math.cos(a)*rd);scene.add(dm);
+  }
+}
+
 function buildRoom(tid){
   disposeRoom();
   T=window.THREE;
@@ -828,16 +955,16 @@ function buildRoom(tid){
   if(T.SRGBColorSpace) renderer.outputColorSpace=T.SRGBColorSpace;
   maxAniso=Math.min(8,renderer.capabilities.getMaxAnisotropy?renderer.capabilities.getMaxAnisotropy():4);
 
-  var ot=(club.style==='oldtrafford');
-  var P=ot?buildPathOT(N):buildPath(N);
+  var st=club.style;
+  var P=(st==='oldtrafford')?buildPathOT(N):(st==='etihad')?buildPathCity(N):buildPath(N);
   var i;
-  if(ot) envOT(tid,club,P,N); else envStadium(tid,club,P,N);
+  if(st==='oldtrafford') envOT(tid,club,P,N); else if(st==='etihad') envCity(tid,club,P,N); else envStadium(tid,club,P,N);
 
   /* hanging rails, soft shadows, shirts */
   var railMat=std('#a8adb3',0.35,0.35),railGeo=new T.CylinderGeometry(0.011,0.011,BAY*0.98,8);
   var shC=cv(128,128),sg=shC.getContext('2d'),rg=sg.createRadialGradient(64,64,6,64,64,62);
   rg.addColorStop(0,'rgba(40,25,25,.30)');rg.addColorStop(1,'rgba(40,25,25,0)');sg.fillStyle=rg;sg.fillRect(0,0,128,128);
-  var shMat=new T.MeshBasicMaterial({map:mkTex(shC),transparent:true,depthWrite:false}),shGeo=new T.PlaneGeometry(0.95,1.15);
+  var shMat=new T.MeshBasicMaterial({map:mkTex(shC),transparent:true,depthWrite:false}),shGeo=new T.PlaneGeometry(0.95,1.15),labGeo=new T.PlaneGeometry(0.34,0.064);
   S={team:tid,club:club,P:P,shirts:[],pick:[],inspect:null,hover:null,ptr:{x:0,y:0,has:false},
      cam:{x:0,z:P.zEnd-0.3,yaw:0,pitch:-0.12,yawT:0,pitchT:-0.12,fov:74,fovT:74},
      intro:{active:false,t:0,dur:2.8,startZ:P.zEnd-0.3,endZ:P.zC},
@@ -846,12 +973,19 @@ function buildRoom(tid){
   S.cam.z=S.intro.startZ;
   var kitCache={};
   for(i=0;i<N;i++){
-    var s=P.bays[i],rail=new T.Mesh(railGeo,railMat);
-    rail.rotation.order='YXZ';
-    var pp=place(P,rail,s,0,2.0,0.16);rail.rotation.set(0,Math.atan2(pp.nx,pp.nz),Math.PI/2);scene.add(rail);
-    var sh=new T.Mesh(shGeo,shMat);place(P,sh,s,0,1.5,0.02);scene.add(sh);
+    var s=P.bays[i],sy=P.shirtY||1.93;
+    if(!P.noRail){
+      var rail=new T.Mesh(railGeo,railMat);
+      rail.rotation.order='YXZ';
+      var pp=place(P,rail,s,0,2.0,0.16);rail.rotation.set(0,Math.atan2(pp.nx,pp.nz),Math.PI/2);scene.add(rail);
+    }
+    var sh=new T.Mesh(shGeo,shMat);place(P,sh,s,0,sy-0.43,0.02);scene.add(sh);
+    if(P.labels){
+      var lb=new T.Mesh(labGeo,new T.MeshBasicMaterial({map:nameTex(surname(players[i].n),'#3c3c40'),transparent:true,depthWrite:false}));
+      place(P,lb,s,0,sy+0.27,0.015);scene.add(lb);
+    }
     var shirt=buildShirt(players[i],club,kitCache);
-    place(P,shirt,s,0,1.93,0.16);
+    place(P,shirt,s,0,sy,P.shirtZ||0.16);
     shirt.userData.homePos=shirt.position.clone();
     shirt.userData.homeRot=shirt.rotation.y;
     shirt.userData.k=0;shirt.userData.h=0;shirt.userData.seed=i*1.7;
