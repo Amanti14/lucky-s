@@ -380,9 +380,9 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=10;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=11;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
-var LK_V='5';        /* bump this number to force phones to re-download the images */
+var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
   /* tries each url in order (e.g. crests/arsenal.png, then arsenal.png) */
   if(typeof urls==='string') urls=[urls];
