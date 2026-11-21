@@ -380,7 +380,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=11;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=12;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -693,18 +693,19 @@ function crestCanvasOT(club){
   return c;
 }
 function cabinetCanvas(club,img){
-  var c=cv(256,165),g=c.getContext('2d');
-  g.fillStyle='#ebe9e6';g.fillRect(0,0,256,165);
-  var gr=g.createLinearGradient(0,0,0,165);gr.addColorStop(0,'rgba(0,0,0,.10)');gr.addColorStop(0.25,'rgba(0,0,0,0)');
-  g.fillStyle=gr;g.fillRect(0,0,256,165);
-  g.fillStyle='#b9b5b0';g.fillRect(98,34,60,7);
+  var c=cv(256,213),g=c.getContext('2d');
+  g.fillStyle='#ebe9e6';g.fillRect(0,0,256,213);
+  var gr=g.createLinearGradient(0,0,0,213);gr.addColorStop(0,'rgba(0,0,0,.10)');gr.addColorStop(0.22,'rgba(0,0,0,0)');
+  g.fillStyle=gr;g.fillRect(0,0,256,213);
+  g.strokeStyle='rgba(120,112,104,.35)';g.lineWidth=3;g.strokeRect(12,22,232,178);
+  g.fillStyle='#b9b5b0';g.fillRect(98,52,60,8);
   if(img&&img.width){
-    var r=Math.min(70/img.width,70/img.height);
-    g.drawImage(img,128-img.width*r/2,98-img.height*r/2,img.width*r,img.height*r);
+    var r=Math.min(82/img.width,82/img.height);
+    g.drawImage(img,128-img.width*r/2,128-img.height*r/2,img.width*r,img.height*r);
   }else{
-    g.strokeStyle='#27272b';g.lineWidth=5;g.beginPath();g.arc(128,98,34,0,Math.PI*2);g.stroke();
-    g.fillStyle='#27272b';g.font='800 20px Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';
-    g.fillText(club.abbr||'FC',128,99);
+    g.strokeStyle='#27272b';g.lineWidth=5;g.beginPath();g.arc(128,128,38,0,Math.PI*2);g.stroke();
+    g.fillStyle='#27272b';g.font='800 22px Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';
+    g.fillText(club.abbr||'FC',128,129);
   }
   return c;
 }
@@ -729,27 +730,31 @@ function envOT(tid,club,P,N){
     }catch(e){}
   });
 
+  var D=0.28,BN=0.5;            /* D = depth of cabinet AND dividers (equal), BN = seat depth */
+  var pf=function(m){m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-2;return m;};
+  pf(crest.material);
+
   /* orange LED glow along the benches */
   var ledC=cv(4,128),lg=ledC.getContext('2d'),grd=lg.createLinearGradient(0,128,0,0);
   grd.addColorStop(0,'rgba(255,255,255,.95)');grd.addColorStop(1,'rgba(255,255,255,0)');lg.fillStyle=grd;lg.fillRect(0,0,4,128);
-  addStrip(P,function(p){return [p.x+p.nx*0.6,0.008,p.z+p.nz*0.6,p.x+p.nx*1.3,0.008,p.z+p.nz*1.3];},4,0,
-    new T.MeshBasicMaterial({map:mkTex(ledC),color:P0.led,transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:DS,opacity:0.75}));
-  addStrip(P,function(p){return [p.x+p.nx*0.66,0.012,p.z+p.nz*0.66,p.x+p.nx*0.72,0.012,p.z+p.nz*0.72];},4,0,
-    new T.MeshBasicMaterial({color:P0.led,side:DS}));
-  addStrip(P,function(p){return [p.x+p.nx*0.6,0.03,p.z+p.nz*0.6,p.x+p.nx*0.6,0.36,p.z+p.nz*0.6];},4,0,
+  addStrip(P,function(p){return [p.x+p.nx*0.82,0.008,p.z+p.nz*0.82,p.x+p.nx*1.5,0.008,p.z+p.nz*1.5];},4,0,
+    pf(new T.MeshBasicMaterial({map:mkTex(ledC),color:P0.led,transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:DS,opacity:0.75})));
+  addStrip(P,function(p){return [p.x+p.nx*0.86,0.012,p.z+p.nz*0.86,p.x+p.nx*0.92,0.012,p.z+p.nz*0.92];},4,0,
+    pf(new T.MeshBasicMaterial({color:P0.led,side:DS})));
+  addStrip(P,function(p){return [p.x+p.nx*0.83,0.03,p.z+p.nz*0.83,p.x+p.nx*0.83,0.36,p.z+p.nz*0.83];},4,0,
     std('#120f10',0.8,0,{side:DS}));
 
   /* dark niche (where the shirt hangs) */
   addStrip(P,function(p){return [p.x,1.05,p.z,p.x,2.2,p.z];},4,0,std(INK,0.5,0.15,{side:DS}));
-  /* oak soffit over each niche */
-  addStrip(P,function(p){return [p.x,2.2,p.z,p.x+p.nx*0.66,2.2,p.z+p.nz*0.66];},4,0,std(WOOD,0.55,0.05,{side:DS}));
-  addStrip(P,function(p){return [p.x+p.nx*0.66,2.1,p.z+p.nz*0.66,p.x+p.nx*0.66,2.2,p.z+p.nz*0.66];},4,0,std(WOOD,0.55,0.05,{side:DS}));
+  /* oak soffit over each niche (same depth as the dividers) */
+  addStrip(P,function(p){return [p.x,2.2,p.z,p.x+p.nx*D,2.2,p.z+p.nz*D];},4,0,std(WOOD,0.55,0.05,{side:DS}));
+  addStrip(P,function(p){return [p.x+p.nx*(D+0.004),2.1,p.z+p.nz*(D+0.004),p.x+p.nx*(D+0.004),2.2,p.z+p.nz*(D+0.004)];},4,0,std(WOOD,0.55,0.05,{side:DS}));
 
-  /* white cabinet under the niche, small crest on each */
+  /* white cabinet box under the niche: full bay width, same depth as the dividers */
   var cabT=mkTex(cabinetCanvas(club),true);
-  addStrip(P,function(p){return [p.x+p.nx*0.06,0.47,p.z+p.nz*0.06,p.x+p.nx*0.06,1.05,p.z+p.nz*0.06];},BAY,-0.8/BAY,
+  addStrip(P,function(p){return [p.x+p.nx*(D-0.004),0.30,p.z+p.nz*(D-0.004),p.x+p.nx*(D-0.004),1.05,p.z+p.nz*(D-0.004)];},BAY,-0.8/BAY,
     new T.MeshStandardMaterial({map:cabT,roughness:0.55,side:DS}));
-  addStrip(P,function(p){return [p.x,1.05,p.z,p.x+p.nx*0.06,1.05,p.z+p.nz*0.06];},4,0,std('#ebe9e6',0.6,0,{side:DS}));
+  addStrip(P,function(p){return [p.x,1.05,p.z,p.x+p.nx*(D-0.004),1.05,p.z+p.nz*(D-0.004)];},4,0,std('#ebe9e6',0.6,0,{side:DS}));
   loadImg(['crests/'+tid+'.png',tid+'.png'],function(im){
     try{cabT.image=cabinetCanvas(club,im);cabT.needsUpdate=true;}catch(e){}
   });
@@ -761,19 +766,20 @@ function envOT(tid,club,P,N){
   pg.fillStyle='rgba(120,100,80,.35)';pg.fillRect(0,0,3,256);
   addStrip(P,function(p){return [p.x,2.2,p.z,p.x,HT,p.z];},BAY,-0.8/BAY,
     new T.MeshBasicMaterial({map:mkTex(pc,true),side:DS}));
-  addStrip(P,function(p){return [p.x,HT-0.05,p.z,p.x,HT,p.z];},4,0,new T.MeshBasicMaterial({color:0xff8d5a,side:DS}));
-  addStrip(P,function(p){return [p.x,HT-0.012,p.z,p.x+p.nx*0.5,HT-0.012,p.z+p.nz*0.5];},4,0,
-    new T.MeshBasicMaterial({color:0xffb9a0,transparent:true,opacity:0.7,side:DS}));
+  /* thin orange glow line: held in front of the panel and under the ceiling so nothing overlaps (no shimmer) */
+  addStrip(P,function(p){return [p.x+p.nx*0.03,HT-0.07,p.z+p.nz*0.03,p.x+p.nx*0.03,HT-0.03,p.z+p.nz*0.03];},4,0,
+    pf(new T.MeshBasicMaterial({color:0xff8d5a,side:DS})));
 
-  /* oak dividers, black leather bench cushions */
-  var divMat=std(WOOD,0.5,0.05),divGeo=new T.BoxGeometry(0.05,1.9,0.66),d;
+  /* oak dividers (equal depth to the cabinet), black leather bench cushions */
+  var divMat=std(WOOD,0.5,0.05),divGeo=new T.BoxGeometry(0.05,1.89,D),d;
   for(i=0;i<P.divs.length;i++){
-    d=new T.Mesh(divGeo,divMat);place(P,d,P.divs[i],0,1.25,0.33);scene.add(d);
+    d=new T.Mesh(divGeo,divMat);place(P,d,P.divs[i],0,1.245,D/2);scene.add(d);
   }
-  var leather=std('#1b1a1c',0.42,0.1),cushGeo=new T.BoxGeometry(0.78,0.1,0.5),trayGeo=new T.BoxGeometry(0.84,0.05,0.56),cm,tr;
+  var seatZ=D+0.02+BN/2;
+  var leather=std('#1b1a1c',0.42,0.1),cushGeo=new T.BoxGeometry(0.8,0.1,BN),trayGeo=new T.BoxGeometry(BAY-0.05,0.05,BN+0.04),cm,tr;
   for(i=0;i<P.cells.length;i++){
-    tr=new T.Mesh(trayGeo,divMat);place(P,tr,P.cells[i],0,0.345,0.4);scene.add(tr);
-    cm=new T.Mesh(cushGeo,leather);place(P,cm,P.cells[i],0,0.42,0.4);scene.add(cm);
+    tr=new T.Mesh(trayGeo,divMat);place(P,tr,P.cells[i],0,0.345,seatZ);scene.add(tr);
+    cm=new T.Mesh(cushGeo,leather);place(P,cm,P.cells[i],0,0.42,seatZ);scene.add(cm);
   }
 
   /* end walls: dark wood with a door */
@@ -791,13 +797,13 @@ function envOT(tid,club,P,N){
   var ceil=new T.Mesh(new T.PlaneGeometry(A*2+0.2,L+0.2),std('#f2f0ee',1,0));
   ceil.rotation.x=Math.PI/2;ceil.position.set(0,HT,L/2);scene.add(ceil);
   var inset=new T.Mesh(new T.PlaneGeometry(3.4,L-3.0),std('#0e0c0d',0.9,0));
-  inset.rotation.x=Math.PI/2;inset.position.set(0,HT-0.012,L/2);scene.add(inset);
+  inset.rotation.x=Math.PI/2;inset.position.set(0,HT-0.03,L/2);scene.add(inset);
   var fm=new T.MeshBasicMaterial({color:0xffa879}),lg1=new T.BoxGeometry(0.04,0.02,L-3.0),lg2=new T.BoxGeometry(3.44,0.02,0.04),fr;
-  [-1,1].forEach(function(sd){fr=new T.Mesh(lg1,fm);fr.position.set(sd*1.7,HT-0.02,L/2);scene.add(fr);});
-  [1.5,L-1.5].forEach(function(zz){fr=new T.Mesh(lg2,fm);fr.position.set(0,HT-0.02,zz);scene.add(fr);});
+  [-1,1].forEach(function(sd){fr=new T.Mesh(lg1,fm);fr.position.set(sd*1.7,HT-0.035,L/2);scene.add(fr);});
+  [1.5,L-1.5].forEach(function(zz){fr=new T.Mesh(lg2,fm);fr.position.set(0,HT-0.035,zz);scene.add(fr);});
   var dlGeo=new T.CircleGeometry(0.1,16),dlMat=new T.MeshBasicMaterial({color:0xffffff}),zi,dm;
   for(zi=1.2;zi<L-0.6;zi+=2.3){[-1,1].forEach(function(sd){
-    dm=new T.Mesh(dlGeo,dlMat);dm.rotation.x=Math.PI/2;dm.position.set(sd*2.45,HT-0.01,zi);scene.add(dm);
+    dm=new T.Mesh(dlGeo,dlMat);dm.rotation.x=Math.PI/2;dm.position.set(sd*2.45,HT-0.025,zi);scene.add(dm);
   });}
 }
 
@@ -812,7 +818,7 @@ function buildRoom(tid){
 
   scene=new T.Scene();
   scene.background=new T.Color('#0a0807');
-  camera=new T.PerspectiveCamera(70,w/h,0.05,60);
+  camera=new T.PerspectiveCamera(70,w/h,0.1,70);
   camera.rotation.order='YXZ';
   try{ renderer=new T.WebGLRenderer({canvas:canvas,antialias:true,powerPreference:'high-performance'}); }
   catch(e){ throw new Error('no webgl'); }
