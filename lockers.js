@@ -385,7 +385,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=14;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=15;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -830,26 +830,46 @@ function buildPathCity(N){
   return {pts:pts,total:total,step:step,bays:bays,divs:[],s0:s0,R:R,cz:cz,full:{pts:ring(-Math.PI,Math.PI)},
           zEnd:2*R-0.15,zC:cz+R*0.55,shirtY:1.78,shirtZ:0.07,noRail:true,labels:true};
 }
-function bandCanvasCity(club,img){
-  var c=cv(4096,216),g=c.getContext('2d');
-  var gr=g.createLinearGradient(0,0,0,216);gr.addColorStop(0,'#6db3e6');gr.addColorStop(1,'#4a97d3');
-  g.fillStyle=gr;g.fillRect(0,0,4096,216);
-  g.fillStyle='#ffffff';g.textBaseline='middle';
-  function put(txt,x,align,max){
-    var fs=96;g.font='800 '+fs+'px "Arial Narrow",Arial,sans-serif';
-    while(g.measureText(txt).width>max&&fs>30){fs-=3;g.font='800 '+fs+'px "Arial Narrow",Arial,sans-serif';}
-    g.textAlign=align;g.fillText(txt,x,112);
+var CITY_TEXT='SOME ARE BORN HERE, SOME DRAWN HERE BUT WE ALL CALL IT HOME.';
+/* lay the sentence out along the arc (metres) so it runs from the first badge to the last badge */
+function cityBandPlan(arcLen,segLen){
+  var pxm=2048/(segLen+0.5),Lpx=(arcLen-3.8)*pxm,n=CITY_TEXT.length;
+  var m=cv(8,8).getContext('2d'),fs,adv,tot,i;
+  for(fs=2*Math.floor(0.42*pxm/0.72/2);fs>=60;fs-=2){   /* start from letters 0.42 m tall, shrink only if the sentence would not fit */
+    m.font='800 '+fs+'px "Arial Narrow",Arial,sans-serif';
+    adv=[];tot=0;
+    for(i=0;i<n;i++){adv.push(m.measureText(CITY_TEXT.charAt(i)).width);tot+=adv[i];}
+    if(tot+0.12*fs*(n-1)<=Lpx) break;
   }
-  put('SOME ARE BORN HERE, SOME DRAWN HERE',2048-150,'right',1820);
-  put('BUT WE ALL CALL IT HOME.',2048+150,'left',1820);
-  g.fillStyle='#ffffff';g.beginPath();g.arc(2048,108,98,0,Math.PI*2);g.fill();
-  if(img&&img.width){
-    var r=Math.min(150/img.width,150/img.height);
-    g.drawImage(img,2048-img.width*r/2,108-img.height*r/2,img.width*r,img.height*r);
-  }else{
-    g.strokeStyle='#1c2c5b';g.lineWidth=9;g.beginPath();g.arc(2048,108,84,0,Math.PI*2);g.stroke();
-    g.fillStyle='#1c2c5b';g.textAlign='center';g.font='900 42px Arial,sans-serif';g.fillText(club.abbr||'MCFC',2048,110);
+  var gap=(Lpx-tot)/(n-1),x=0,chars=[];
+  for(i=0;i<n;i++){chars.push({ch:CITY_TEXT.charAt(i),m:1.9+x/pxm});x+=adv[i]+gap;}
+  return {pxm:pxm,fs:fs,chars:chars,badges:[0.95,arcLen-0.95]};
+}
+/* one section of the band: a = start (metres along the arc) of this section */
+function bandSegCanvas(club,img,plan,a){
+  var W=2048,H=Math.round(0.74*plan.pxm),c=cv(W,H),g=c.getContext('2d'),i;
+  var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#6db3e6');gr.addColorStop(1,'#4a97d3');
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  var x0=a-0.25;
+  g.fillStyle='#ffffff';g.textBaseline='middle';g.textAlign='left';
+  g.font='800 '+plan.fs+'px "Arial Narrow",Arial,sans-serif';
+  for(i=0;i<plan.chars.length;i++){
+    var px=(plan.chars[i].m-x0)*plan.pxm;
+    if(px>-plan.fs&&px<W+plan.fs) g.fillText(plan.chars[i].ch,px,H*0.54);
   }
+  plan.badges.forEach(function(bm){
+    var bx=(bm-x0)*plan.pxm,br=H*0.46;
+    if(bx<-br||bx>W+br) return;
+    g.fillStyle='#ffffff';g.beginPath();g.arc(bx,H/2,br,0,Math.PI*2);g.fill();
+    if(img&&img.width){
+      var r=Math.min(br*1.8/img.width,br*1.8/img.height);
+      g.drawImage(img,bx-img.width*r/2,H/2-img.height*r/2,img.width*r,img.height*r);
+    }else{
+      g.strokeStyle='#1c2c5b';g.lineWidth=Math.max(4,br*0.1);g.beginPath();g.arc(bx,H/2,br*0.86,0,Math.PI*2);g.stroke();
+      g.fillStyle='#1c2c5b';g.textAlign='center';g.font='900 '+Math.round(br*0.48)+'px Arial,sans-serif';g.fillText(club.abbr||'MCFC',bx,H/2+1);
+      g.textAlign='left';
+    }
+  });
   return c;
 }
 function envCity(tid,club,P,N){
@@ -891,13 +911,25 @@ function envCity(tid,club,P,N){
   addStrip(P.full,function(p){return [p.x,0,p.z,p.x,HT,p.z];},BAY,-(R*Math.PI/6+P.s0)/BAY,
     new T.MeshStandardMaterial({map:mkTex(wc,true),roughness:0.9,side:DS}));
 
-  /* sky-blue band with the club wording, leaning out from the wall */
-  var tile=Math.PI*R;
-  var bandT=mkTex(bandCanvasCity(club),true);
-  addStrip(P.full,function(p){return [p.x+p.nx*0.3,2.52,p.z+p.nz*0.3,p.x,3.2,p.z];},tile,0.5,
-    new T.MeshStandardMaterial({map:bandT,roughness:0.5,side:DS}));
+  /* sky-blue band, leaning out from the wall: ONE sentence end to end, badge only at the first and last end */
+  var arcStart=R*Math.PI/6,arcLen=P.total,K=Math.ceil(arcLen/9),segLen=arcLen/K,plan=cityBandPlan(arcLen,segLen);
+  var bandFn=function(p){return [p.x+p.nx*0.3,2.52,p.z+p.nz*0.3,p.x,3.2,p.z];};
+  var segs=[],k,ka,sub;
+  for(k=0;k<K;k++){
+    ka=arcStart+k*segLen;
+    sub={pts:P.full.pts.filter(function(p){return p.s>=ka-0.1-1e-6&&p.s<=ka+segLen+0.1+1e-6;})};
+    var bt=mkTex(bandSegCanvas(club,null,plan,k*segLen));
+    addStrip(sub,bandFn,segLen+0.5,-(ka-0.25)/(segLen+0.5),new T.MeshStandardMaterial({map:bt,roughness:0.5,side:DS}));
+    segs.push({t:bt,a:k*segLen});
+  }
+  var gc=cv(4,64),gg=gc.getContext('2d'),ggr=gg.createLinearGradient(0,0,0,64);
+  ggr.addColorStop(0,'#6db3e6');ggr.addColorStop(1,'#4a97d3');gg.fillStyle=ggr;gg.fillRect(0,0,4,64);
+  var gapMat=new T.MeshStandardMaterial({map:mkTex(gc),roughness:0.5,side:DS});
+  [[0,arcStart+0.1],[arcStart+arcLen-0.1,1e9]].forEach(function(r){
+    addStrip({pts:P.full.pts.filter(function(p){return p.s>=r[0]-1e-6&&p.s<=r[1];})},bandFn,4,0,gapMat);
+  });
   loadImg(['crests/'+tid+'.png',tid+'.png'],function(im){
-    try{bandT.image=bandCanvasCity(club,im);bandT.needsUpdate=true;}catch(e){}
+    try{segs.forEach(function(sg){sg.t.image=bandSegCanvas(club,im,plan,sg.a);sg.t.needsUpdate=true;});}catch(e){}
   });
 
   /* open storage under the bench: white frame, dark inside */
