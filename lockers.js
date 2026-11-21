@@ -380,7 +380,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=12;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=13;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -693,19 +693,20 @@ function crestCanvasOT(club){
   return c;
 }
 function cabinetCanvas(club,img){
-  var c=cv(256,213),g=c.getContext('2d');
-  g.fillStyle='#ebe9e6';g.fillRect(0,0,256,213);
-  var gr=g.createLinearGradient(0,0,0,213);gr.addColorStop(0,'rgba(0,0,0,.10)');gr.addColorStop(0.22,'rgba(0,0,0,0)');
-  g.fillStyle=gr;g.fillRect(0,0,256,213);
-  g.strokeStyle='rgba(120,112,104,.35)';g.lineWidth=3;g.strokeRect(12,22,232,178);
-  g.fillStyle='#b9b5b0';g.fillRect(98,52,60,8);
+  /* 0.90 m (top) -> 0.30 m (bottom); the cushion hides everything below 0.47 m (row 122) */
+  var c=cv(256,170),g=c.getContext('2d');
+  g.fillStyle='#ebe9e6';g.fillRect(0,0,256,170);
+  var gr=g.createLinearGradient(0,0,0,170);gr.addColorStop(0,'rgba(0,0,0,.10)');gr.addColorStop(0.16,'rgba(0,0,0,0)');
+  g.fillStyle=gr;g.fillRect(0,0,256,170);
+  g.fillStyle='#c9c5c0';g.fillRect(103,23,50,6);
+  g.fillStyle='rgba(120,112,104,.45)';g.fillRect(103,29,50,1.5);
   if(img&&img.width){
-    var r=Math.min(82/img.width,82/img.height);
-    g.drawImage(img,128-img.width*r/2,128-img.height*r/2,img.width*r,img.height*r);
+    var r=Math.min(44/img.width,44/img.height);
+    g.drawImage(img,128-img.width*r/2,66-img.height*r/2,img.width*r,img.height*r);
   }else{
-    g.strokeStyle='#27272b';g.lineWidth=5;g.beginPath();g.arc(128,128,38,0,Math.PI*2);g.stroke();
-    g.fillStyle='#27272b';g.font='800 22px Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';
-    g.fillText(club.abbr||'FC',128,129);
+    g.strokeStyle='#27272b';g.lineWidth=3.5;g.beginPath();g.arc(128,66,22,0,Math.PI*2);g.stroke();
+    g.fillStyle='#27272b';g.font='800 13px Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';
+    g.fillText(club.abbr||'FC',128,67);
   }
   return c;
 }
@@ -745,16 +746,16 @@ function envOT(tid,club,P,N){
     std('#120f10',0.8,0,{side:DS}));
 
   /* dark niche (where the shirt hangs) */
-  addStrip(P,function(p){return [p.x,1.05,p.z,p.x,2.2,p.z];},4,0,std(INK,0.5,0.15,{side:DS}));
+  addStrip(P,function(p){return [p.x,0.90,p.z,p.x,2.2,p.z];},4,0,std(INK,0.5,0.15,{side:DS}));
   /* oak soffit over each niche (same depth as the dividers) */
   addStrip(P,function(p){return [p.x,2.2,p.z,p.x+p.nx*D,2.2,p.z+p.nz*D];},4,0,std(WOOD,0.55,0.05,{side:DS}));
   addStrip(P,function(p){return [p.x+p.nx*(D+0.004),2.1,p.z+p.nz*(D+0.004),p.x+p.nx*(D+0.004),2.2,p.z+p.nz*(D+0.004)];},4,0,std(WOOD,0.55,0.05,{side:DS}));
 
   /* white cabinet box under the niche: full bay width, same depth as the dividers */
   var cabT=mkTex(cabinetCanvas(club),true);
-  addStrip(P,function(p){return [p.x+p.nx*(D-0.004),0.30,p.z+p.nz*(D-0.004),p.x+p.nx*(D-0.004),1.05,p.z+p.nz*(D-0.004)];},BAY,-0.8/BAY,
+  addStrip(P,function(p){return [p.x+p.nx*(D-0.004),0.30,p.z+p.nz*(D-0.004),p.x+p.nx*(D-0.004),0.90,p.z+p.nz*(D-0.004)];},BAY,-0.8/BAY,
     new T.MeshStandardMaterial({map:cabT,roughness:0.55,side:DS}));
-  addStrip(P,function(p){return [p.x,1.05,p.z,p.x+p.nx*(D-0.004),1.05,p.z+p.nz*(D-0.004)];},4,0,std('#ebe9e6',0.6,0,{side:DS}));
+  addStrip(P,function(p){return [p.x,0.90,p.z,p.x+p.nx*(D-0.004),0.90,p.z+p.nz*(D-0.004)];},4,0,std('#ebe9e6',0.6,0,{side:DS}));
   loadImg(['crests/'+tid+'.png',tid+'.png'],function(im){
     try{cabT.image=cabinetCanvas(club,im);cabT.needsUpdate=true;}catch(e){}
   });
@@ -771,12 +772,12 @@ function envOT(tid,club,P,N){
     pf(new T.MeshBasicMaterial({color:0xff8d5a,side:DS})));
 
   /* oak dividers (equal depth to the cabinet), black leather bench cushions */
-  var divMat=std(WOOD,0.5,0.05),divGeo=new T.BoxGeometry(0.05,1.89,D),d;
+  var divMat=std(WOOD,0.5,0.05),divGeo=new T.BoxGeometry(0.04,1.89,D),d;
   for(i=0;i<P.divs.length;i++){
     d=new T.Mesh(divGeo,divMat);place(P,d,P.divs[i],0,1.245,D/2);scene.add(d);
   }
   var seatZ=D+0.02+BN/2;
-  var leather=std('#1b1a1c',0.42,0.1),cushGeo=new T.BoxGeometry(0.8,0.1,BN),trayGeo=new T.BoxGeometry(BAY-0.05,0.05,BN+0.04),cm,tr;
+  var leather=std('#1b1a1c',0.42,0.1),cushGeo=new T.BoxGeometry(0.82,0.1,BN),trayGeo=new T.BoxGeometry(BAY-0.04,0.05,BN+0.04),cm,tr;
   for(i=0;i<P.cells.length;i++){
     tr=new T.Mesh(trayGeo,divMat);place(P,tr,P.cells[i],0,0.345,seatZ);scene.add(tr);
     cm=new T.Mesh(cushGeo,leather);place(P,cm,P.cells[i],0,0.42,seatZ);scene.add(cm);
