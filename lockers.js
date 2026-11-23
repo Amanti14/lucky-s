@@ -397,7 +397,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=18;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=19;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -1182,7 +1182,7 @@ function envAnfield(tid,club,P,N){
   var ft=mkTex(fc,true);ft.repeat.set(40/2.4,70/2.4);
   var floor=new T.Mesh(new T.PlaneGeometry(40,70),new T.MeshStandardMaterial({map:ft,roughness:0.36,metalness:0.1}));
   floor.rotation.x=-Math.PI/2;floor.position.set(0,0,L/2);scene.add(floor);
-  var crest=new T.Mesh(new T.PlaneGeometry(4.6,4.6),pf(new T.MeshStandardMaterial({map:mkTex(afFloorCanvas(club)),transparent:true,roughness:0.5,depthWrite:false})));
+  var crest=new T.Mesh(new T.PlaneGeometry(5.4,5.4),pf(new T.MeshStandardMaterial({map:mkTex(afFloorCanvas(club)),transparent:true,roughness:0.5,depthWrite:false})));
   crest.rotation.x=-Math.PI/2;crest.position.set(0,0.006,L*0.5);scene.add(crest);
   loadImg(club.crestUrl?[club.crestUrl]:['crests/'+tid+'-floor.png',tid+'-floor.png','crests/'+tid+'.png',tid+'.png'],function(im){
     try{
