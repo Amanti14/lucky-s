@@ -391,7 +391,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=16;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=17;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -980,10 +980,16 @@ function buildPathCS(N){
   P.shirtY=1.78;P.shirtZ=0.08;P.noRail=true;P.plates=true;
   return P;
 }
-function chCrest(g,cx,cy,r,img,col){
+function tintImg(img,col){
+  var c=cv(img.width,img.height),g=c.getContext('2d');
+  g.drawImage(img,0,0);g.globalCompositeOperation='source-in';g.fillStyle=col;g.fillRect(0,0,c.width,c.height);
+  return c;
+}
+function chCrest(g,cx,cy,r,img,col,tint){
   if(img&&img.width){
+    var src=tint?tintImg(img,col):img;
     var k=Math.min(2*r/img.width,2*r/img.height);
-    g.drawImage(img,cx-img.width*k/2,cy-img.height*k/2,img.width*k,img.height*k);
+    g.drawImage(src,cx-img.width*k/2,cy-img.height*k/2,img.width*k,img.height*k);
   }else{
     g.save();g.strokeStyle=col;g.fillStyle=col;g.lineWidth=Math.max(2,r*0.12);
     g.beginPath();g.arc(cx,cy,r*0.9,0,Math.PI*2);g.stroke();
@@ -1004,7 +1010,7 @@ function chBandCanvas(img){
   g.fillStyle='#b7ceff';g.textBaseline='middle';g.font='800 96px Arial,sans-serif';
   g.textAlign='right';g.fillText('CFC',1024-70,138);
   g.textAlign='left';g.fillText('LDN',1024+70,138);
-  chCrest(g,1024,134,52,img,'#b7ceff');
+  chCrest(g,1024,134,56,img,'#b7ceff',true);
   return c;
 }
 function chBannerCanvas(img){
@@ -1014,7 +1020,7 @@ function chBannerCanvas(img){
   g.fillStyle='#e8efff';g.textBaseline='middle';g.font='800 118px Arial,sans-serif';
   g.textAlign='right';g.fillText('CFC',512-120,134);
   g.textAlign='left';g.fillText('LDN',512+120,134);
-  chCrest(g,512,128,96,img,'#e8efff');
+  chCrest(g,512,128,104,img,'#e8efff',true);
   return c;
 }
 function chPlateCanvas(img){
@@ -1022,7 +1028,7 @@ function chPlateCanvas(img){
   var gr=g.createLinearGradient(0,0,0,85);gr.addColorStop(0,'#e6e9ee');gr.addColorStop(1,'#b8bdc6');
   g.fillStyle=gr;g.fillRect(0,0,256,85);
   g.strokeStyle='#8f959f';g.lineWidth=4;g.strokeRect(2,2,252,81);
-  chCrest(g,128,43,26,img,'#1c2c5b');
+  chCrest(g,128,43,28,img,'#1c2c5b',false);
   return c;
 }
 function envChelsea(tid,club,P,N){
