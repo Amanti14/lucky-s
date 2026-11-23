@@ -202,6 +202,12 @@ Object.assign(CLUBS.arsenal,{
   /* colours sampled from the real room video */
   pal:{band:'#e2300a',div:'#d3200f',cushion:'#a3122a',floor:'#d9dde2',wall:'#f5f3f0',led:'#ff3b1f'}
 });
+Object.assign(CLUBS.chelsea,{
+  style:'stamford',abbr:'CFC',
+  kitHome:{body:'#1C46C8',sleeves:'#1C46C8',num:'#FFFFFF'},      /* royal blue with white print, as in the video */
+  gkKit:{body:'#FF7A1A',num:'#FFFFFF'},                           /* orange keeper shirts */
+  pal:{led:'#2f6bff'}
+});
 Object.assign(CLUBS.mancity,{
   style:'etihad',abbr:'MCFC',
   kitHome:{body:'#8CC2E8',sleeves:'#8CC2E8',num:'#1C2C5B'},     /* sky blue with navy print, as in the video */
@@ -385,7 +391,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=15;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=16;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -489,8 +495,8 @@ function bandCanvas(club,img){
 
 /* ---------- room geometry: a U-shaped path the lockers follow ---------- */
 var H=3.45,BY0=2.5,BY1=3.15,BAY=0.9,EYE=1.62;
-function buildPath(N){
-  var R=1.7,Lb=BAY*7,A=Lb/2+R;
+function buildPath(N,opt){
+  var R=(opt&&opt.R)||1.7,Lb=(opt&&opt.Lb)||BAY*7,A=Lb/2+R;
   var Ls=Math.max(2.6,(N*BAY-Lb-Math.PI*R)/2);
   var step=0.08,pts=[],s=0;
   function push(x,z,dx,dz){pts.push({s:s,x:x,z:z,dx:dx,dz:dz,nx:-dz,nz:dx});}
@@ -967,6 +973,144 @@ function envCity(tid,club,P,N){
   }
 }
 
+
+/* ---------- Stamford Bridge-style room: oak lockers, royal-blue band and bench, dark speckled floor ---------- */
+function buildPathCS(N){
+  var P=buildPath(N,{R:0.5,Lb:BAY*9});
+  P.shirtY=1.78;P.shirtZ=0.08;P.noRail=true;P.plates=true;
+  return P;
+}
+function chCrest(g,cx,cy,r,img,col){
+  if(img&&img.width){
+    var k=Math.min(2*r/img.width,2*r/img.height);
+    g.drawImage(img,cx-img.width*k/2,cy-img.height*k/2,img.width*k,img.height*k);
+  }else{
+    g.save();g.strokeStyle=col;g.fillStyle=col;g.lineWidth=Math.max(2,r*0.12);
+    g.beginPath();g.arc(cx,cy,r*0.9,0,Math.PI*2);g.stroke();
+    g.font='900 '+Math.round(r*0.62)+'px Arial,sans-serif';g.textAlign='center';g.textBaseline='middle';
+    g.fillText('CFC',cx,cy+1);g.restore();
+  }
+}
+function chBandCanvas(img){
+  var c=cv(2048,265),g=c.getContext('2d');
+  var gr=g.createLinearGradient(0,0,0,265);gr.addColorStop(0,'#1a3fc2');gr.addColorStop(1,'#10299a');
+  g.fillStyle=gr;g.fillRect(0,0,2048,265);
+  [-1,1].forEach(function(sd){
+    var x=1024+sd*600;
+    g.fillStyle='#aeb4bf';g.fillRect(x-95,108,190,50);
+    g.fillStyle='rgba(30,36,60,.55)';
+    for(var k=0;k<5;k++) g.fillRect(x-85,116+k*8,170,3);
+  });
+  g.fillStyle='#b7ceff';g.textBaseline='middle';g.font='800 96px Arial,sans-serif';
+  g.textAlign='right';g.fillText('CFC',1024-70,138);
+  g.textAlign='left';g.fillText('LDN',1024+70,138);
+  chCrest(g,1024,134,52,img,'#b7ceff');
+  return c;
+}
+function chBannerCanvas(img){
+  var c=cv(1024,256),g=c.getContext('2d');
+  g.fillStyle='#2149d6';g.fillRect(0,0,1024,256);
+  g.fillStyle='rgba(255,255,255,.12)';g.fillRect(0,0,1024,10);g.fillRect(0,246,1024,10);
+  g.fillStyle='#e8efff';g.textBaseline='middle';g.font='800 118px Arial,sans-serif';
+  g.textAlign='right';g.fillText('CFC',512-120,134);
+  g.textAlign='left';g.fillText('LDN',512+120,134);
+  chCrest(g,512,128,96,img,'#e8efff');
+  return c;
+}
+function chPlateCanvas(img){
+  var c=cv(256,85),g=c.getContext('2d');
+  var gr=g.createLinearGradient(0,0,0,85);gr.addColorStop(0,'#e6e9ee');gr.addColorStop(1,'#b8bdc6');
+  g.fillStyle=gr;g.fillRect(0,0,256,85);
+  g.strokeStyle='#8f959f';g.lineWidth=4;g.strokeRect(2,2,252,81);
+  chCrest(g,128,43,26,img,'#1c2c5b');
+  return c;
+}
+function envChelsea(tid,club,P,N){
+  var P0=club.P,HT=3.4,DS=T.DoubleSide,i,d,OAK='#c9964f',OAK2='#b3803c',BLUE='#1b3fc0',LED=P0.led;
+  var pf=function(m){m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-2;return m;};
+
+  scene.add(new T.HemisphereLight(0xdde6ff,0x4a4a58,0.78));
+  var dl=new T.DirectionalLight(0xfff3e0,0.5);dl.position.set(0.5,6,P.zC+3);scene.add(dl);
+
+  /* floor: dark, glossy, speckled */
+  var fc=cv(256,256),fg=fc.getContext('2d');
+  fg.fillStyle='#3d3d42';fg.fillRect(0,0,256,256);
+  for(i=0;i<1400;i++){
+    fg.fillStyle='rgba('+(i%2?'255,255,255':'0,0,0')+','+(0.03+Math.random()*0.08).toFixed(3)+')';
+    fg.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*3,1+Math.random()*3);
+  }
+  var ft=mkTex(fc,true);ft.repeat.set(14,14);
+  var floor=new T.Mesh(new T.PlaneGeometry(40,40),new T.MeshStandardMaterial({map:ft,roughness:0.28,metalness:0.25}));
+  floor.rotation.x=-Math.PI/2;floor.position.set(0,0,P.zC);scene.add(floor);
+
+  /* blue "CFC LDN" banner across the floor */
+  var banT=mkTex(chBannerCanvas(null));
+  var ban=new T.Mesh(new T.PlaneGeometry(5.4,1.35),pf(new T.MeshStandardMaterial({map:banT,roughness:0.5})));
+  ban.rotation.x=-Math.PI/2;ban.position.set(0,0.006,P.R+P.Ls*0.45);scene.add(ban);
+
+  /* glowing blue edge of the bench */
+  var ledC=cv(4,128),lg=ledC.getContext('2d'),grd=lg.createLinearGradient(0,128,0,0);
+  grd.addColorStop(0,'rgba(255,255,255,.95)');grd.addColorStop(1,'rgba(255,255,255,0)');lg.fillStyle=grd;lg.fillRect(0,0,4,128);
+  addStrip(P,function(p){return [p.x+p.nx*0.62,0.008,p.z+p.nz*0.62,p.x+p.nx*1.4,0.008,p.z+p.nz*1.4];},4,0,
+    pf(new T.MeshBasicMaterial({map:mkTex(ledC),color:LED,transparent:true,blending:T.AdditiveBlending,depthWrite:false,side:DS,opacity:0.8})));
+  addStrip(P,function(p){return [p.x+p.nx*0.66,0.012,p.z+p.nz*0.66,p.x+p.nx*0.72,0.012,p.z+p.nz*0.72];},4,0,
+    pf(new T.MeshBasicMaterial({color:LED,side:DS})));
+  addStrip(P,function(p){return [p.x+p.nx*0.6,0.03,p.z+p.nz*0.6,p.x+p.nx*0.6,0.07,p.z+p.nz*0.6];},4,0,
+    pf(new T.MeshBasicMaterial({color:LED,side:DS})));
+
+  /* oak panelling behind the shirts (soft grain, shaded at every bay edge) */
+  var wc=cv(128,512),wg=wc.getContext('2d');
+  wg.fillStyle=OAK;wg.fillRect(0,0,128,512);
+  for(i=0;i<60;i++){wg.fillStyle='rgba(120,70,20,'+(0.05+Math.random()*0.08).toFixed(3)+')';wg.fillRect(Math.random()*128,0,1+Math.random()*2,512);}
+  var g1=wg.createLinearGradient(0,0,0,90);g1.addColorStop(0,'rgba(40,20,5,.40)');g1.addColorStop(1,'rgba(40,20,5,0)');wg.fillStyle=g1;wg.fillRect(0,0,128,90);
+  var g2=wg.createLinearGradient(0,0,18,0);g2.addColorStop(0,'rgba(40,20,5,.25)');g2.addColorStop(1,'rgba(40,20,5,0)');wg.fillStyle=g2;wg.fillRect(0,0,18,512);
+  var g3=wg.createLinearGradient(128,0,110,0);g3.addColorStop(0,'rgba(40,20,5,.25)');g3.addColorStop(1,'rgba(40,20,5,0)');wg.fillStyle=g3;wg.fillRect(110,0,18,512);
+  addStrip(P,function(p){return [p.x,0.46,p.z,p.x,2.5,p.z];},BAY,-P.s0/BAY,
+    new T.MeshStandardMaterial({map:mkTex(wc,true),roughness:0.7,side:DS}));
+  addStrip(P,function(p){return [p.x,0,p.z,p.x,0.46,p.z];},4,0,std('#1a1a1e',0.8,0,{side:DS}));
+  addStrip(P,function(p){return [p.x,3.2,p.z,p.x,HT,p.z];},4,0,std('#10162e',0.9,0,{side:DS}));
+
+  /* royal-blue band: "CFC LDN" and vents */
+  var bandT=mkTex(chBandCanvas(null),true),bt=5.4;
+  addStrip(P,function(p){return [p.x,2.5,p.z,p.x,3.2,p.z];},bt,-P.sBack/bt+0.5,
+    new T.MeshStandardMaterial({map:bandT,roughness:0.55,side:DS}));
+  addStrip(P,function(p){return [p.x+p.nx*0.02,HT-0.06,p.z+p.nz*0.02,p.x+p.nx*0.02,HT-0.03,p.z+p.nz*0.02];},4,0,
+    pf(new T.MeshBasicMaterial({color:LED,side:DS})));
+
+  /* silver nameplates (above each shirt) */
+  var plateT=mkTex(chPlateCanvas(null));
+  P.plateMat=new T.MeshStandardMaterial({map:plateT,roughness:0.4,metalness:0.3});
+
+  /* the real crest, if you upload it, replaces the simple CFC badge everywhere */
+  loadImg(['crests/'+tid+'.png',tid+'.png'],function(im){
+    try{
+      bandT.image=chBandCanvas(im);bandT.needsUpdate=true;
+      banT.image=chBannerCanvas(im);banT.needsUpdate=true;
+      plateT.image=chPlateCanvas(im);plateT.needsUpdate=true;
+    }catch(e){}
+  });
+
+  /* oak dividers + a small shelf in every bay + the blue bench */
+  var divMat=std(OAK2,0.55,0.03),divGeo=new T.BoxGeometry(0.05,2.02,0.42),shGeo2=new T.BoxGeometry(0.84,0.03,0.34),sf;
+  for(i=0;i<P.divs.length;i++){d=new T.Mesh(divGeo,divMat);place(P,d,P.divs[i],0,1.47,0.21);scene.add(d);}
+  for(i=0;i<P.bays.length;i++){sf=new T.Mesh(shGeo2,divMat);place(P,sf,P.bays[i],0,1.0,0.17);scene.add(sf);}
+  var velvet=std(BLUE,0.9,0,{side:DS});
+  addStrip(P,function(p){return [p.x+p.nx*0.06,0.46,p.z+p.nz*0.06,p.x+p.nx*0.62,0.46,p.z+p.nz*0.62];},4,0,velvet);
+  addStrip(P,function(p){return [p.x+p.nx*0.62,0.33,p.z+p.nz*0.62,p.x+p.nx*0.62,0.46,p.z+p.nz*0.62];},4,0,velvet);
+  addStrip(P,function(p){return [p.x+p.nx*0.58,0.07,p.z+p.nz*0.58,p.x+p.nx*0.58,0.33,p.z+p.nz*0.58];},4,0,std('#2b2018',0.8,0,{side:DS}));
+
+  /* dark ceiling with spotlights, dark entrance wall */
+  var ceil=new T.Mesh(new T.PlaneGeometry(P.A*2+0.6,P.zEnd+0.6),std('#26262b',1,0));
+  ceil.rotation.x=Math.PI/2;ceil.position.set(0,HT,P.zEnd/2);scene.add(ceil);
+  var dlGeo=new T.CircleGeometry(0.12,16),dlMat=new T.MeshBasicMaterial({color:0xffffff}),zi,xi,dm;
+  for(zi=0;zi<4;zi++){for(xi=-1;xi<=1;xi++){
+    dm=new T.Mesh(dlGeo,dlMat);dm.rotation.x=Math.PI/2;
+    dm.position.set(xi*2.4,HT-0.025,P.R+0.8+zi*Math.max(1.6,(P.Ls-0.8)/3));scene.add(dm);
+  }}
+  var front=new T.Mesh(new T.PlaneGeometry(P.A*2+0.4,HT),std('#12172c',0.95,0));
+  front.rotation.y=Math.PI;front.position.set(0,HT/2,P.zEnd+0.02);scene.add(front);
+}
+
 function buildRoom(tid){
   disposeRoom();
   T=window.THREE;
@@ -988,15 +1132,15 @@ function buildRoom(tid){
   maxAniso=Math.min(8,renderer.capabilities.getMaxAnisotropy?renderer.capabilities.getMaxAnisotropy():4);
 
   var st=club.style;
-  var P=(st==='oldtrafford')?buildPathOT(N):(st==='etihad')?buildPathCity(N):buildPath(N);
+  var P=(st==='oldtrafford')?buildPathOT(N):(st==='etihad')?buildPathCity(N):(st==='stamford')?buildPathCS(N):buildPath(N);
   var i;
-  if(st==='oldtrafford') envOT(tid,club,P,N); else if(st==='etihad') envCity(tid,club,P,N); else envStadium(tid,club,P,N);
+  if(st==='oldtrafford') envOT(tid,club,P,N); else if(st==='etihad') envCity(tid,club,P,N); else if(st==='stamford') envChelsea(tid,club,P,N); else envStadium(tid,club,P,N);
 
   /* hanging rails, soft shadows, shirts */
   var railMat=std('#a8adb3',0.35,0.35),railGeo=new T.CylinderGeometry(0.011,0.011,BAY*0.98,8);
   var shC=cv(128,128),sg=shC.getContext('2d'),rg=sg.createRadialGradient(64,64,6,64,64,62);
   rg.addColorStop(0,'rgba(40,25,25,.30)');rg.addColorStop(1,'rgba(40,25,25,0)');sg.fillStyle=rg;sg.fillRect(0,0,128,128);
-  var shMat=new T.MeshBasicMaterial({map:mkTex(shC),transparent:true,depthWrite:false}),shGeo=new T.PlaneGeometry(0.95,1.15),labGeo=new T.PlaneGeometry(0.34,0.064);
+  var shMat=new T.MeshBasicMaterial({map:mkTex(shC),transparent:true,depthWrite:false}),shGeo=new T.PlaneGeometry(0.95,1.15),labGeo=new T.PlaneGeometry(0.34,0.064),plateGeo=new T.PlaneGeometry(0.27,0.09);
   S={team:tid,club:club,P:P,shirts:[],pick:[],inspect:null,hover:null,ptr:{x:0,y:0,has:false},
      cam:{x:0,z:P.zEnd-0.3,yaw:0,pitch:-0.12,yawT:0,pitchT:-0.12,fov:74,fovT:74},
      intro:{active:false,t:0,dur:2.8,startZ:P.zEnd-0.3,endZ:P.zC},
@@ -1015,6 +1159,9 @@ function buildRoom(tid){
     if(P.labels){
       var lb=new T.Mesh(labGeo,new T.MeshBasicMaterial({map:nameTex(surname(players[i].n),'#3c3c40'),transparent:true,depthWrite:false}));
       place(P,lb,s,0,sy+0.27,0.015);scene.add(lb);
+    }
+    if(P.plates&&P.plateMat){
+      var pl=new T.Mesh(plateGeo,P.plateMat);place(P,pl,s,0,sy+0.24,0.02);scene.add(pl);
     }
     var shirt=buildShirt(players[i],club,kitCache);
     place(P,shirt,s,0,sy,P.shirtZ||0.16);
