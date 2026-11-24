@@ -397,7 +397,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=19;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=21;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -1163,6 +1163,52 @@ function afFloorCanvas(club){
   g.font='italic 900 330px Georgia,serif';g.fillText('L.F.C.',512,560);
   return c;
 }
+var AF_TEXT={
+  ynwa:`More than a song. More than a anthem. It's the values we stand for. You'll Never Walk Alone is our rallying cry to the world. The belief we will always have each other's backs through the toughest times, the shared hope for brighter days and the pride in who we are. It is what makes us stand taller, fight harder and stick together through every storm. It connects every single person who supports this football club, wherever they are in the world, bringing us all together as one big family. It's the passion of our supporters, the power of Anfield, the spirit of Liverpool FC. Because here, YNWA.`,
+  anfield:`Since Bill Shankly ordered its installation in 1974, generations of players have touched the “This is Anfield” sign before walking through the tunnel to step onto the pitch.
+Of course, it’s more than just a sign. It’s a symbol; a piece of our history. A statement that forms part of Anfield’s rich folklore. Reaching up to it before every game has become our ritual—an action as natural as pulling on the red shirt.
+In the words of Shankly, “It’s there to remind us who we’re playing for… and to let the opposition know who they’re playing against.”
+This is Anfield.`
+};
+function afRand(seed){var v=seed;return function(){v=(v*9301+49297)%233280;return v/233280;};}
+/* one end wall of the hall: red recess with big dark lettering and a column of small white text */
+function afEndCanvas(kind,A,HT){
+  var W=2048,H=Math.round(W*HT/(2*A)),c=cv(W,H),g=c.getContext('2d'),pxm=W/(2*A),i,rnd=afRand(kind==='ynwa'?7:3);
+  g.fillStyle='#4a0a10';g.fillRect(0,0,W,H);
+  var pw=4.6*pxm,px0=(W-pw)/2;
+  var rg=g.createRadialGradient(W/2,H*0.5,40,W/2,H*0.5,pw*0.75);rg.addColorStop(0,'#a8261b');rg.addColorStop(1,'#68100f');
+  g.fillStyle=rg;g.fillRect(px0,0,pw,H);
+  var tg=g.createLinearGradient(0,0,0,H*0.22);tg.addColorStop(0,'rgba(0,0,0,.45)');tg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=tg;g.fillRect(px0,0,pw,H*0.22);
+  var bgd=g.createLinearGradient(0,H*0.8,0,H);bgd.addColorStop(0,'rgba(0,0,0,0)');bgd.addColorStop(1,'rgba(0,0,0,.4)');g.fillStyle=bgd;g.fillRect(px0,H*0.8,pw,H*0.2);
+  var lines=kind==='ynwa'?
+    [{t:"YOU'LL",fs:200,y:0.20},{t:'NEVER',fs:200,y:0.41},{t:'WALK',fs:200,y:0.62},{t:'ALONE',fs:200,y:0.83}]:
+    [{t:'THIS IS',fs:150,y:0.43},{t:'ANFIELD',fs:270,y:0.62}];
+  var tx=px0+0.07*pw,maxW=0.55*pw;
+  g.textAlign='left';g.textBaseline='middle';
+  lines.forEach(function(L){
+    var fs=L.fs;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';
+    var mw=(L.t==='THIS IS')?maxW*0.62:maxW;
+    while(g.measureText(L.t).width>mw&&fs>40){fs-=4;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';}
+    g.fillStyle='rgba(220,90,70,.55)';g.fillText(L.t,tx-3,H*L.y-3);      /* lit edge */
+    g.fillStyle='#170404';g.fillText(L.t,tx,H*L.y);                      /* dark letters */
+  });
+  /* the wall text, small and white, wrapped into a narrow column */
+  var cx=px0+0.63*pw,cw=0.30*pw,fs2=15,lh=20,paras=AF_TEXT[kind].split('\n'),lines2=[];
+  g.font='500 '+fs2+'px Arial,sans-serif';
+  paras.forEach(function(p,pi){
+    var words=p.split(' '),line='';
+    words.forEach(function(wd){
+      var t=line?line+' '+wd:wd;
+      if(g.measureText(t).width>cw&&line){lines2.push(line);line=wd;}else line=t;
+    });
+    if(line) lines2.push(line);
+    if(pi<paras.length-1) lines2.push('');
+  });
+  var ty=H*0.47-lines2.length*lh/2;
+  g.fillStyle='rgba(255,255,255,.92)';g.textAlign='left';g.textBaseline='top';
+  lines2.forEach(function(l){ if(l) g.fillText(l,cx,ty); ty+=lh; });
+  return c;
+}
 function envAnfield(tid,club,P,N){
   var A=P.A,L=P.Lroom,HT=3.3,DS=T.DoubleSide,i,RED='#c8102e';
   var pf=function(m){m.polygonOffset=true;m.polygonOffsetFactor=-2;m.polygonOffsetUnits=-2;return m;};
@@ -1223,15 +1269,18 @@ function envAnfield(tid,club,P,N){
     place(P,m,s,0,2.615,0.015);scene.add(m);
   };
 
-  /* end walls: deep red, the back one with the famous sign wording */
-  var ec=cv(1024,512),eg=ec.getContext('2d'),egr=eg.createLinearGradient(0,0,1024,512);
-  egr.addColorStop(0,'#7a0e1b');egr.addColorStop(1,'#4a0810');eg.fillStyle=egr;eg.fillRect(0,0,1024,512);
-  eg.fillStyle='#1c0306';eg.textAlign='center';eg.textBaseline='middle';eg.font='900 150px Arial,sans-serif';
-  eg.fillText('THIS IS',512,170);eg.fillText('ANFIELD',512,340);
-  var back=new T.Mesh(new T.PlaneGeometry(A*2,HT),new T.MeshStandardMaterial({map:mkTex(ec),roughness:0.8,side:DS}));
+  /* the two end walls: THIS IS ANFIELD (back) and YOU'LL NEVER WALK ALONE (entrance) */
+  var back=new T.Mesh(new T.PlaneGeometry(A*2,HT),new T.MeshStandardMaterial({map:mkTex(afEndCanvas('anfield',A,HT)),roughness:0.85,side:DS}));
   back.position.set(0,HT/2,0.01);scene.add(back);
-  var front=new T.Mesh(new T.PlaneGeometry(A*2,HT),std('#5a0b14',0.85,0,{side:DS}));
+  var front=new T.Mesh(new T.PlaneGeometry(A*2,HT),new T.MeshStandardMaterial({map:mkTex(afEndCanvas('ynwa',A,HT)),roughness:0.85,side:DS}));
   front.rotation.y=Math.PI;front.position.set(0,HT/2,L-0.01);scene.add(front);
+  var postMat=std('#5e3418',0.7,0),postGeo=new T.BoxGeometry(0.14,HT,0.12),boxMat=std('#f2f2f0',0.6,0),boxGeo=new T.BoxGeometry(0.55,0.3,0.3),skGeo=new T.BoxGeometry(0.09,0.09,0.02),w,sd;
+  [[0.0,1],[L,-1]].forEach(function(wl){
+    var zs=wl[0],dir=wl[1];
+    [-1,1].forEach(function(sd2){w=new T.Mesh(postGeo,postMat);w.position.set(sd2*2.4,HT/2,zs+dir*0.06);scene.add(w);});
+    w=new T.Mesh(boxGeo,boxMat);w.position.set(dir*0.37,2.75,zs+dir*0.17);scene.add(w);
+    w=new T.Mesh(skGeo,boxMat);w.position.set(dir*1.38,0.3,zs+dir*0.012);scene.add(w);
+  });
 
   /* dark-red slatted ceiling with long white light bars */
   var sc=cv(16,16),sg=sc.getContext('2d');
