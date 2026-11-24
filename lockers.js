@@ -397,7 +397,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=21;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=22;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -541,6 +541,7 @@ function stripGeo(P,fn,uPer,uShift){
     for(i=0;i<P.pts.length;i++){
       var pt=P.pts[i];
       if(pt.s<r[0]-1e-6||pt.s>r[1]+1e-6) continue;
+      if(r.length>2&&pt.g!==r[2]) continue;
       q=fn(pt);pos.push(q[0],q[1],q[2],q[3],q[4],q[5]);
       u=pt.s/uPer+(uShift||0);uv.push(u,0,u,1);
       if(prev>=0) idx.push(prev*2,prev*2+1,k*2,prev*2+1,k*2+1,k*2);
@@ -1126,9 +1127,24 @@ function envChelsea(tid,club,P,N){
 
 /* ---------- Anfield-style hall: white boards, red nameplates, poster panels, brass dividers ---------- */
 function buildPathAF(N){
-  var P=buildPathOT(N,{A:3.7});
-  P.shirtY=1.84;P.shirtZ=0.07;P.noRail=true;
-  return P;
+  var kb=(N%2===0)?8:7,ks=(N-kb)/2,c=2.3,cd=c*Math.SQRT2,step=0.08,m=0.04;
+  var sideLen=ks*BAY+2*m,backLen=kb*BAY+2*m,A=backLen/2+c,zf=c+sideLen;
+  var pts=[],s=0,gid=0;
+  function seg(x0,z0,x1,z1){
+    var len=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.ceil(len/step)),dx=(x1-x0)/len,dz=(z1-z0)/len,a=s,id=gid++,i,t;
+    for(i=0;i<=n;i++){t=i/n;pts.push({s:a+len*t,x:x0+(x1-x0)*t,z:z0+(z1-z0)*t,dx:dx,dz:dz,nx:-dz,nz:dx,g:id});}
+    s=a+len;
+    return {a:a,b:a+len,g:id};
+  }
+  var L=seg(-A,zf,-A,c),C1=seg(-A,c,-A+c,0),B=seg(-A+c,0,A-c,0),C2=seg(A-c,0,A,c),R=seg(A,c,A,zf);
+  var bays=[],divs=[],k,runs=[[L.a,L.b,L.g],[B.a,B.b,B.g],[R.a,R.b,R.g]];
+  [[L,ks],[B,kb],[R,ks]].forEach(function(rc){
+    var r=rc[0],cnt=rc[1];
+    for(k=0;k<cnt;k++) bays.push(r.a+m+(k+0.5)*BAY);
+    for(k=0;k<=cnt;k++) divs.push(r.a+m+k*BAY);
+  });
+  return {pts:pts,total:s,step:step,runs:runs,bays:bays,divs:divs,s0:0,A:A,Lroom:zf,zEnd:zf,zC:zf-1.8,
+          shirtY:1.84,shirtZ:0.07,noRail:true,ch:[C1,C2],cd:cd};
 }
 function surnameCase(n){
   var w=String(n).split(' ');
@@ -1171,29 +1187,26 @@ In the words of Shankly, “It’s there to remind us who we’re playing for…
 This is Anfield.`
 };
 function afRand(seed){var v=seed;return function(){v=(v*9301+49297)%233280;return v/233280;};}
-/* one end wall of the hall: red recess with big dark lettering and a column of small white text */
-function afEndCanvas(kind,A,HT){
-  var W=2048,H=Math.round(W*HT/(2*A)),c=cv(W,H),g=c.getContext('2d'),pxm=W/(2*A),i,rnd=afRand(kind==='ynwa'?7:3);
-  g.fillStyle='#4a0a10';g.fillRect(0,0,W,H);
-  var pw=4.6*pxm,px0=(W-pw)/2;
-  var rg=g.createRadialGradient(W/2,H*0.5,40,W/2,H*0.5,pw*0.75);rg.addColorStop(0,'#a8261b');rg.addColorStop(1,'#68100f');
-  g.fillStyle=rg;g.fillRect(px0,0,pw,H);
-  var tg=g.createLinearGradient(0,0,0,H*0.22);tg.addColorStop(0,'rgba(0,0,0,.45)');tg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=tg;g.fillRect(px0,0,pw,H*0.22);
-  var bgd=g.createLinearGradient(0,H*0.8,0,H);bgd.addColorStop(0,'rgba(0,0,0,0)');bgd.addColorStop(1,'rgba(0,0,0,.4)');g.fillStyle=bgd;g.fillRect(px0,H*0.8,pw,H*0.2);
+/* an angled corner wall: red panel, big dark lettering, and the wall text in a narrow white column */
+function afPanelCanvas(kind,lenM,HT){
+  var pxm=277,W=Math.round(lenM*pxm),H=Math.round(HT*pxm),c=cv(W,H),g=c.getContext('2d');
+  var rg=g.createRadialGradient(W*0.5,H*0.5,30,W*0.5,H*0.5,W*0.75);rg.addColorStop(0,'#a8261b');rg.addColorStop(1,'#68100f');
+  g.fillStyle=rg;g.fillRect(0,0,W,H);
+  var tg=g.createLinearGradient(0,0,0,H*0.22);tg.addColorStop(0,'rgba(0,0,0,.45)');tg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=tg;g.fillRect(0,0,W,H*0.22);
+  var bgd=g.createLinearGradient(0,H*0.8,0,H);bgd.addColorStop(0,'rgba(0,0,0,0)');bgd.addColorStop(1,'rgba(0,0,0,.4)');g.fillStyle=bgd;g.fillRect(0,H*0.8,W,H*0.2);
   var lines=kind==='ynwa'?
-    [{t:"YOU'LL",fs:200,y:0.20},{t:'NEVER',fs:200,y:0.41},{t:'WALK',fs:200,y:0.62},{t:'ALONE',fs:200,y:0.83}]:
-    [{t:'THIS IS',fs:150,y:0.43},{t:'ANFIELD',fs:270,y:0.62}];
-  var tx=px0+0.07*pw,maxW=0.55*pw;
+    [{t:"YOU'LL",fs:190,y:0.20},{t:'NEVER',fs:190,y:0.41},{t:'WALK',fs:190,y:0.62},{t:'ALONE',fs:190,y:0.83}]:
+    [{t:'THIS IS',fs:140,y:0.43},{t:'ANFIELD',fs:250,y:0.62}];
+  var tx=0.06*W,maxW=0.56*W;
   g.textAlign='left';g.textBaseline='middle';
-  lines.forEach(function(L){
-    var fs=L.fs;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';
-    var mw=(L.t==='THIS IS')?maxW*0.62:maxW;
-    while(g.measureText(L.t).width>mw&&fs>40){fs-=4;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';}
-    g.fillStyle='rgba(220,90,70,.55)';g.fillText(L.t,tx-3,H*L.y-3);      /* lit edge */
-    g.fillStyle='#170404';g.fillText(L.t,tx,H*L.y);                      /* dark letters */
+  lines.forEach(function(Ln){
+    var fs=Ln.fs;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';
+    var mw=(Ln.t==='THIS IS')?maxW*0.62:maxW;
+    while(g.measureText(Ln.t).width>mw&&fs>40){fs-=4;g.font='900 '+fs+'px Impact,"Arial Narrow","Arial Black",Arial,sans-serif';}
+    g.fillStyle='rgba(220,90,70,.55)';g.fillText(Ln.t,tx-3,H*Ln.y-3);
+    g.fillStyle='#170404';g.fillText(Ln.t,tx,H*Ln.y);
   });
-  /* the wall text, small and white, wrapped into a narrow column */
-  var cx=px0+0.63*pw,cw=0.30*pw,fs2=15,lh=20,paras=AF_TEXT[kind].split('\n'),lines2=[];
+  var cx=0.655*W,cw=0.30*W,fs2=15,lh=20,paras=AF_TEXT[kind].split('\n'),lines2=[];
   g.font='500 '+fs2+'px Arial,sans-serif';
   paras.forEach(function(p,pi){
     var words=p.split(' '),line='';
@@ -1269,18 +1282,18 @@ function envAnfield(tid,club,P,N){
     place(P,m,s,0,2.615,0.015);scene.add(m);
   };
 
-  /* the two end walls: THIS IS ANFIELD (back) and YOU'LL NEVER WALK ALONE (entrance) */
-  var back=new T.Mesh(new T.PlaneGeometry(A*2,HT),new T.MeshStandardMaterial({map:mkTex(afEndCanvas('anfield',A,HT)),roughness:0.85,side:DS}));
-  back.position.set(0,HT/2,0.01);scene.add(back);
-  var front=new T.Mesh(new T.PlaneGeometry(A*2,HT),new T.MeshStandardMaterial({map:mkTex(afEndCanvas('ynwa',A,HT)),roughness:0.85,side:DS}));
-  front.rotation.y=Math.PI;front.position.set(0,HT/2,L-0.01);scene.add(front);
-  var postMat=std('#5e3418',0.7,0),postGeo=new T.BoxGeometry(0.14,HT,0.12),boxMat=std('#f2f2f0',0.6,0),boxGeo=new T.BoxGeometry(0.55,0.3,0.3),skGeo=new T.BoxGeometry(0.09,0.09,0.02),w,sd;
-  [[0.0,1],[L,-1]].forEach(function(wl){
-    var zs=wl[0],dir=wl[1];
-    [-1,1].forEach(function(sd2){w=new T.Mesh(postGeo,postMat);w.position.set(sd2*2.4,HT/2,zs+dir*0.06);scene.add(w);});
-    w=new T.Mesh(boxGeo,boxMat);w.position.set(dir*0.37,2.75,zs+dir*0.17);scene.add(w);
-    w=new T.Mesh(skGeo,boxMat);w.position.set(dir*1.38,0.3,zs+dir*0.012);scene.add(w);
+  /* the two angled corner walls break the rows of kits: THIS IS ANFIELD (left) and YOU'LL NEVER WALK ALONE (right) */
+  var brassP=std('#b8903f',0.4,0.25,{emissive:new T.Color('#2a1d05')}),postGeo=new T.BoxGeometry(0.09,HT,0.09),boxMat=std('#f2f2f0',0.6,0),boxGeo=new T.BoxGeometry(0.55,0.3,0.3),skGeo=new T.BoxGeometry(0.09,0.09,0.02),w;
+  [['anfield',P.ch[0]],['ynwa',P.ch[1]]].forEach(function(cc){
+    var kind=cc[0],ch=cc[1],lenM=P.cd,sub={pts:P.pts.filter(function(p){return p.g===ch.g;})};
+    addStrip(sub,function(p){return [p.x,0,p.z,p.x,HT,p.z];},lenM,-ch.a/lenM,
+      new T.MeshStandardMaterial({map:mkTex(afPanelCanvas(kind,lenM,HT)),roughness:0.85,side:DS}));
+    [ch.a+0.005,ch.b-0.005].forEach(function(sv){var pp=atS(P,sv);w=new T.Mesh(postGeo,brassP);w.position.set(pp.x,HT/2,pp.z);scene.add(w);});
+    w=new T.Mesh(boxGeo,boxMat);place(P,w,ch.a+lenM*0.38,0,2.75,0.17);scene.add(w);
+    w=new T.Mesh(skGeo,boxMat);place(P,w,ch.a+lenM*0.88,0,0.3,0.012);scene.add(w);
   });
+  var front=new T.Mesh(new T.PlaneGeometry(A*2+0.4,HT),std('#5a0b14',0.85,0,{side:DS}));
+  front.rotation.y=Math.PI;front.position.set(0,HT/2,L+0.02);scene.add(front);
 
   /* dark-red slatted ceiling with long white light bars */
   var sc=cv(16,16),sg=sc.getContext('2d');
@@ -1288,7 +1301,7 @@ function envAnfield(tid,club,P,N){
   var st=mkTex(sc,true);st.repeat.set((A*2)/0.2,1);
   var ceil=new T.Mesh(new T.PlaneGeometry(A*2+0.2,L+0.2),new T.MeshStandardMaterial({map:st,roughness:0.9}));
   ceil.rotation.x=Math.PI/2;ceil.position.set(0,HT,L/2);scene.add(ceil);
-  var barMat=new T.MeshBasicMaterial({color:0xffffff}),barLen=(L-3.0)/2,bar,xs=[-2.4,-0.8,0.8,2.4];
+  var barMat=new T.MeshBasicMaterial({color:0xffffff}),barLen=(L-3.0)/2,bar,xs=[-4.0,-2.4,-0.8,0.8,2.4,4.0];
   xs.forEach(function(x){[1.0+barLen/2,L-1.0-barLen/2].forEach(function(zc){
     bar=new T.Mesh(new T.BoxGeometry(0.06,0.02,barLen),barMat);bar.position.set(x,HT-0.03,zc);scene.add(bar);
   });});
