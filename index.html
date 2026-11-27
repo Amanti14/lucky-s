@@ -1091,7 +1091,7 @@ function pushCartSnapshot(){
       body:JSON.stringify({
         type:'cart_update',
         telegramId:tgUser.id,
-        items:(cart||[]).map(i=>({name:i.name,qty:i.qty,size:i.size,price:i.price}))
+        items:(cart||[]).map(i=>({name:itemFullName(i),qty:i.qty,size:i.size,price:i.price}))
       })
     }).catch(()=>{});
   },1500); // debounce so rapid qty changes don't spam the Worker
@@ -1693,8 +1693,23 @@ function openDetail(pid){
 function detGoBack(){ showPage('shop'); }
 function selSz(s,el){ selSize=s; document.querySelectorAll('.sz-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); }
 function chgQty(d){ selQty=Math.max(1,selQty+d); document.getElementById('qty-disp').textContent=selQty; }
-function addToCart(){ const ex=cart.find(i=>i.id===curProduct.id&&i.size===selSize&&!i.custom); if(ex) ex.qty+=selQty; else cart.push({...curProduct,size:selSize,qty:selQty}); saveCart(); updateBadge(); showToast('Added to cart! 🛒'); }
-function quickAdd(pid){ const found=findProduct(pid); if(!found) return; const {p,team}=found; const name=`${team.name} ${p.kitType}`; const item={...p,name,teamName:team.name,size:cfg.sizes[2]||'M',qty:1}; const ex=cart.find(i=>i.id===p.id&&i.size===item.size&&!i.custom); if(ex) ex.qty++; else cart.push(item); saveCart(); updateBadge(); showToast(`${name} added! 🛒`); }
+// ── PRINT (NAME + NUMBER) OF A CART ITEM ─────────────────────────────
+// custom = typed by the customer; player = the real player's kit picked in the Lockers room
+function itemPrint(i){
+  const c=i&&i.custom&&(i.custom.name||i.custom.number)?i.custom:null;
+  const p=!c&&i&&i.player&&(i.player.name||i.player.number)?i.player:null;
+  const src=c||p; if(!src) return null;
+  return { kind:c?'custom':'player', icon:c?'🎨':'⚽', label:c?'Custom':'Player',
+           text:[src.name,src.number!==''&&src.number!=null?'#'+src.number:''].filter(Boolean).join(' ') };
+}
+function itemFullName(i){ const t=itemPrint(i); return (i.name||'')+(t?' ['+t.text+']':''); }
+function itemPrintHtml(i){
+  const t=itemPrint(i); if(!t) return '';
+  return `<div style="display:inline-block;margin:2px 0 6px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:11px;font-weight:700;color:var(--white)">${t.icon} ${t.label}: ${t.text}</div>`;
+}
+
+function addToCart(){ const ex=cart.find(i=>i.id===curProduct.id&&i.size===selSize&&!i.custom&&!i.player); if(ex) ex.qty+=selQty; else cart.push({...curProduct,size:selSize,qty:selQty}); saveCart(); updateBadge(); showToast('Added to cart! 🛒'); }
+function quickAdd(pid){ const found=findProduct(pid); if(!found) return; const {p,team}=found; const name=`${team.name} ${p.kitType}`; const item={...p,name,teamName:team.name,size:cfg.sizes[2]||'M',qty:1}; const ex=cart.find(i=>i.id===p.id&&i.size===item.size&&!i.custom&&!i.player); if(ex) ex.qty++; else cart.push(item); saveCart(); updateBadge(); showToast(`${name} added! 🛒`); }
 
 // ── LIVE JERSEY CUSTOMIZATION ─────────────────────────────────────────
 let customState={product:null,size:null,qty:1,name:'',number:''};
@@ -1956,7 +1971,8 @@ function showCart(){
           <div class="cart-thumb">${item.imgUrl?`<img src="${item.imgUrl}" onerror="this.parentNode.textContent='${item.emoji||'⚽'}'">`:item.emoji||'⚽'}</div>
           <div class="cart-info" style="flex:1">
             <div class="cart-name">${item.name}</div>
-            <div class="cart-meta">Size: ${item.size}${item.custom&&(item.custom.name||item.custom.number)?` · 🎨 ${[item.custom.name,item.custom.number?'#'+item.custom.number:''].filter(Boolean).join(' ')}`:''}</div>
+            <div class="cart-meta" style="margin-bottom:2px">Size: ${item.size}</div>
+            ${itemPrintHtml(item)}
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
               <div style="display:flex;align-items:center;gap:0;background:var(--card2);border:1px solid var(--border);border-radius:9px;overflow:hidden">
                 <button onclick="cartChgQty(${idx},-1)" style="background:none;border:none;color:var(--white);width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:300">−</button>
@@ -2017,7 +2033,7 @@ function completeOrder(o){
   const itemsHtml=(cartSnapshot||[]).map(item=>`
     <div class="receipt-item">
       <div class="receipt-item-img">${item.imgUrl?`<img src="${item.imgUrl}" onerror="this.parentNode.textContent='${item.emoji||'⚽'}'">`:item.emoji||'⚽'}</div>
-      <div class="receipt-item-info"><div class="receipt-item-name">${item.name}</div><div class="receipt-item-meta">Size: ${item.size} · Qty: ${item.qty}</div></div>
+      <div class="receipt-item-info"><div class="receipt-item-name">${item.name}</div><div class="receipt-item-meta">Size: ${item.size} · Qty: ${item.qty}${itemPrint(item)?' · '+itemPrint(item).icon+' '+itemPrint(item).text:''}</div></div>
       <div class="receipt-item-price">${fmt(item.price*item.qty)}</div>
     </div>`).join('');
   const payBadgeClass=o.rawPayment==='cbe'?'cbe':o.rawPayment==='telebirr'?'telebirr':'pickup';
@@ -2055,7 +2071,7 @@ function completeOrder(o){
       <div style="font-size:11px;color:var(--gray);flex:1;line-height:1.5">Thank you for shopping at ${cfg.storeName}! For help: ${cfg.phone}</div>
       <div style="font-size:22px">🙏</div>
     </div>`;
-  orderHistory.push({id:oid,userId:tgUser?String(tgUser.id):'guest',date:dateStr,total,itemCount:(cartSnapshot||[]).reduce((a,i)=>a+i.qty,0),method:m?.id||'delivery',methodIcon:m?.icon||'📦',methodName:m?.name||'Delivery',paymentMethod:payMethod,txnUrl:txnUrl||null,items:(cartSnapshot||[]).map(i=>({name:i.name+(i.custom&&(i.custom.name||i.custom.number)?' ['+[i.custom.name,i.custom.number?'#'+i.custom.number:''].filter(Boolean).join(' ')+']':''),qty:i.qty,size:i.size,price:i.price}))});
+  orderHistory.push({id:oid,userId:tgUser?String(tgUser.id):'guest',date:dateStr,total,itemCount:(cartSnapshot||[]).reduce((a,i)=>a+i.qty,0),method:m?.id||'delivery',methodIcon:m?.icon||'📦',methodName:m?.name||'Delivery',paymentMethod:payMethod,txnUrl:txnUrl||null,items:(cartSnapshot||[]).map(i=>({name:itemFullName(i),qty:i.qty,size:i.size,price:i.price}))});
   saveOrders();
   // Send to bot Worker — customer gets receipt, owner gets full order details
   const orderPayload = {
@@ -2064,7 +2080,7 @@ function completeOrder(o){
     buyer,
     telegramId:tgUser?.id,
     username:tgUser?.username,
-    items:(cartSnapshot||[]).map(i=>({name:i.name+(i.custom&&(i.custom.name||i.custom.number)?' ['+[i.custom.name,i.custom.number?'#'+i.custom.number:''].filter(Boolean).join(' ')+']':''),qty:i.qty,size:i.size,price:i.price})),
+    items:(cartSnapshot||[]).map(i=>({name:itemFullName(i),qty:i.qty,size:i.size,price:i.price})),
     subtotal:fmt(sub),
     shipping:ship===0?'Free':fmt(ship),
     total:fmt(total),
