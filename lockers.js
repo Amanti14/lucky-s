@@ -397,7 +397,7 @@ function disposeRoom(){
 }
 
 /* ---------- canvas helpers ---------- */
-var LK_BUILD=22;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
+var LK_BUILD=23;      /* shown on the intro screen: confirms which lockers.js your phone loaded */
 var LK_DEBUG=false;   /* shows a small toast saying if each crest/icon file was found - set to false when everything works */
 var LK_V='6';        /* bump this number to force phones to re-download the images */
 function loadImg(urls,cb,label){
@@ -1606,8 +1606,8 @@ function lkAddKit(){
   cfg.leagues.forEach(function(lg){ (lg.teams||[]).forEach(function(t){ if(t.id===S.team){ team=t; prod=(t.products||[]).find(function(p){return /home/i.test(p.kitType||'')})||(t.products||[])[0]; } }); });
   if(!prod){ showToast('Kit not found in shop catalog'); return; }
   var name=(team?team.name+' ':'')+prod.kitType;
-  var item={...prod,name:name,teamName:team?team.name:'',size:(cfg.sizes&&cfg.sizes[2])||'M',qty:1};
-  var ex=cart.find(function(i){return i.id===item.id&&i.size===item.size&&!i.custom});
+  var item={...prod,name:name,teamName:team?team.name:'',size:(cfg.sizes&&cfg.sizes[2])||'M',qty:1,player:{name:surname(SEL.n),number:String(SEL.num)}};
+  var ex=cart.find(function(i){return i.id===item.id&&i.size===item.size&&!i.custom&&i.player&&i.player.number===item.player.number&&i.player.name===item.player.name});
   if(ex) ex.qty++; else cart.push(item);
   saveCart(); updateBadge();
   showToast(name+' added! 🛒');
